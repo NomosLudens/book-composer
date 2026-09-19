@@ -143,7 +143,7 @@ Fontes integrais, working copies, snapshots editoriais completos, projetos JSON 
 
 ## Estado verificado
 
-Estado promovido à `master` em **18/09/2026**.
+Estado público sanitizado promovido à `master` em **19/09/2026**.
 
 | Capacidade | Estado |
 | --- | --- |
@@ -159,7 +159,7 @@ Estado promovido à `master` em **18/09/2026**.
 | Testes | PASS |
 | Build | PASS |
 
-Release verificado: `17daa4fd041eff4adcc7af172d3d21732f50bef9`.
+Baseline pública sanitizada: `2cf2e4dc4b28cefa26dba5d71217a151a54b2969`.
 
 ### Limite de evidência conhecido
 
