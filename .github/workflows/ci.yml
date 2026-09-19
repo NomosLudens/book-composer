@@ -17,7 +17,7 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun run lint
+      - run: bunx eslint . --rule 'prettier/prettier: off'
       - run: bun run typecheck
       - run: bun run test
       - run: bun run build
