@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Block, LayoutBlock } from "../types";
 import {
   BodyText,
+  BookList,
   BookBox,
   BookHeading,
   BookImage,
@@ -24,6 +25,8 @@ export function BlockBody({ block }: { block: Block }) {
       return <BookHeading block={block} />;
     case "text":
       return <BodyText block={block} />;
+    case "list":
+      return <BookList block={block} />;
     case "image":
       return <BookImage block={block} />;
     case "quote":
@@ -111,7 +114,7 @@ function recipeSlotIsEmpty(block: Block): boolean {
 }
 
 /** Envelope de bloco: span, espaçamento editorial, identificação e (só no editor) seleção. */
-export function BlockRenderer({ block }: { block: Block }) {
+export function BlockRenderer({ block, editorialUnitId }: { block: Block; editorialUnitId?: string }) {
   const { interactive, selectedBlockId, selectedBlockIds, onSelectBlock } = useBookRender();
   const style: CSSProperties = {
     marginTop: block.spaceBefore ? `${block.spaceBefore}mm` : undefined,
@@ -150,6 +153,7 @@ export function BlockRenderer({ block }: { block: Block }) {
       className={className}
       style={style}
       data-block-id={block.id}
+      data-editorial-unit-id={editorialUnitId}
       data-selected={
         interactive && (selectedBlockIds?.includes(block.id) || selectedBlockId === block.id)
           ? "true"

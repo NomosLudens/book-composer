@@ -18,6 +18,8 @@ export interface EmptyBookInput {
   title?: string;
   author?: string;
   pageCount?: number;
+  /** IDs determinísticos para o fallback usado durante SSR/hidratação. */
+  stableIds?: boolean;
   /** overrides opcionais de tokens (ex.: para um novo projeto A5) */
   tokens?: Partial<typeof DEFAULT_TOKENS>;
   meta?: Partial<Book["meta"]>;
@@ -26,7 +28,9 @@ export interface EmptyBookInput {
 export function createEmptyBook(input: EmptyBookInput = {}): Book {
   const pageCount = Math.max(1, Math.min(input.pageCount ?? 1, 1000));
   const tokens = { ...DEFAULT_TOKENS, ...(input.tokens ?? {}) };
-  const pages = Array.from({ length: pageCount }, () => createEmptyPage("narrative"));
+  const pages = Array.from({ length: pageCount }, (_, index) =>
+    createEmptyPage("narrative", undefined, input.stableIds ? `page-empty-${index + 1}` : undefined),
+  );
   return {
     schemaVersion: 1,
     meta: {
@@ -52,4 +56,4 @@ export function createEmptyBook(input: EmptyBookInput = {}): Book {
 }
 
 /** Singleton neutro usado como INITIAL_BOOK do editor e como fallback de /print. */
-export const emptyBook: Book = createEmptyBook({ pageCount: 1 });
+export const emptyBook: Book = createEmptyBook({ pageCount: 1, stableIds: true });

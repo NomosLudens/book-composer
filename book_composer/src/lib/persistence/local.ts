@@ -1,4 +1,4 @@
-import type { Block, Book, Page } from "../../book/types";
+import type { Block, Book, Page, SectionNode } from "../../book/types";
 import { DEFAULT_TOKENS } from "../../book/types";
 import { normalizeTableBlock } from "../../book/tableModel";
 import { normalizeRecipe } from "../../book/authoring";
@@ -198,7 +198,7 @@ export function normalizeBook(input: unknown): Book {
     schemaVersion: 1,
     meta: book.meta,
     tokens: { ...DEFAULT_TOKENS, ...(book.tokens ?? {}) },
-    nodes: book.nodes ?? [],
+    nodes: normalizeSectionNodes(book.nodes),
     pages,
     assets: Array.isArray(book.assets)
       ? book.assets.map((asset) => ({
@@ -225,6 +225,25 @@ export function normalizeBook(input: unknown): Book {
       ? { productionPlan: book.productionPlan }
       : {}),
   };
+}
+
+/** Garante identidade estável para a árvore do editor mesmo em projetos legados
+ * que repetem o id de uma seção. Os nós permanecem separados para não perder
+ * agrupamento nem conteúdo; apenas o id repetido recebe um sufixo determinístico. */
+function normalizeSectionNodes(nodes: unknown): SectionNode[] {
+  if (!Array.isArray(nodes)) return [];
+  const used = new Set<string>();
+  return nodes.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const node = candidate as SectionNode;
+    if (typeof node.id !== "string" || !Array.isArray(node.pageIds)) return [];
+    const baseId = node.id;
+    let id = baseId;
+    let suffix = 2;
+    while (used.has(id)) id = `${baseId}-${suffix++}`;
+    used.add(id);
+    return [{ ...node, id, pageIds: node.pageIds.filter((pageId): pageId is string => typeof pageId === "string") }];
+  });
 }
 
 function isCanonicalComposedCover(book: Book, page: Page): boolean {

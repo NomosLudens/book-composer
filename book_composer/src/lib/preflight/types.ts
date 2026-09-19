@@ -80,7 +80,7 @@ export interface PreflightSummary {
 
 export interface PreflightReport {
   schemaVersion: 1;
-  tool: "KALLISTIS BOOK BUILDER · preflight";
+  tool: "BOOK-COMPOSER · preflight";
   generatedAt: string;
   book: {
     title: string;

@@ -101,6 +101,8 @@ export function suggestedRecipeKind(block: Block): RecipeSlotKind | null {
       return block.level === 1 ? "title" : "subtitle";
     case "text":
       return block.role === "lead" ? "lead" : "body";
+    case "list":
+      return "body";
     case "image":
       if (block.position === "full" || block.fullBleed) return "hero-image";
       return block.position === "left" || block.position === "right" ? "portrait" : "image";

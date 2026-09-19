@@ -23,7 +23,7 @@ export function cloudProjectId(book: Pick<Book, "meta">): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
-  return title || "kallistis-book";
+  return title || "book-project";
 }
 
 async function request(path: string, init?: RequestInit): Promise<Response | null> {

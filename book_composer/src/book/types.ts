@@ -105,6 +105,8 @@ export interface BaseBlock {
   fontFamily?: string;
   /** Proveniência opcional de uma materialização editorial determinística. */
   materialization?: MaterializationBlockMetadata;
+  /** Proveniência da importação Markdown; não altera a composição visual. */
+  metadata?: Record<string, unknown>;
 }
 
 export interface MaterializationBlockMetadata {
@@ -154,6 +156,17 @@ export interface TextBlock extends BaseBlock {
   fontStyle?: "normal" | "italic";
   lineHeight?: string | number;
   color?: string;
+}
+
+export interface ListItem {
+  content: string;
+  children?: ListItem[];
+}
+
+export interface ListBlock extends BaseBlock {
+  type: "list";
+  ordered: boolean;
+  items: ListItem[];
 }
 
 export interface HeadingBlock extends BaseBlock {
@@ -571,6 +584,7 @@ export interface LayoutBlock extends BaseBlock {
 
 export type Block =
   | TextBlock
+  | ListBlock
   | HeadingBlock
   | ImageBlock
   | QuoteBlock
@@ -621,6 +635,9 @@ export interface Page {
   blocks: Block[];
   /** Proveniência opcional da página gerada; ausente nas páginas manuais. */
   materialization?: MaterializationPageMetadata;
+  /** Diagnóstico da origem da paginação; não altera o conteúdo editorial. */
+  paginationEngine?: "structural" | "geometric";
+  breakReason?: "INITIAL" | "OVERFLOW" | "BREAK_BEFORE" | "KEEP_WITH_NEXT" | "MANUAL";
 }
 
 export interface MaterializationPageMetadata {
@@ -888,11 +905,10 @@ export const CSS_VAR_BY_TOKEN: Record<keyof BookTokens, string> = {
 };
 
 export const DEFAULT_TOKENS: BookTokens = {
-  /* Defaults neutros do engine. Todo projeto deve sobrescrever conforme
-     o formato físico escolhido (A4, A5, Letter, 6×9", personalizado etc.).
-     Estes valores NÃO pertencem a nenhum projeto específico. */
-  pageWidth: "210mm",
-  pageHeight: "297mm",
+  /* Formato editorial padrão do Book Composer: 14 × 21 cm.
+     Projetos podem sobrescrever conforme o formato físico escolhido. */
+  pageWidth: "140mm",
+  pageHeight: "210mm",
   bleed: "3mm",
   marginInner: "18mm",
   marginOuter: "14mm",

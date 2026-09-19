@@ -37,6 +37,11 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   });
 }
 
+/** Inline-only Markdown for contexts that already own their block element. */
+export function MarkdownInline({ source }: { source: string }) {
+  return <>{renderInline(sanitizeMarkdown(source).replace(/\s+/gu, " ").trim(), "inline")}</>;
+}
+
 export function Markdown({ source }: { source: string }) {
   const lines = sanitizeMarkdown(source).replace(/\r\n/g, "\n").split("\n");
   const out: ReactNode[] = [];

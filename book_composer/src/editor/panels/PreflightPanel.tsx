@@ -145,7 +145,7 @@ export function PreflightPanel() {
         <div className="flex max-h-[80vh] w-[860px] max-w-full flex-col border border-border bg-card shadow-xl">
           <header className="flex items-center gap-3 border-b border-border px-4 py-3">
             <h2 className="text-[12px] font-semibold tracking-[0.2em] text-foreground uppercase">
-              Preflight
+              Preflight do editor · screen
             </h2>
             <span className="text-[11px] text-muted-foreground">
               <span className={errors > 0 ? "text-destructive" : ""}>{errors} Errors</span>
@@ -160,6 +160,9 @@ export function PreflightPanel() {
                   ? "estático + medições de layout"
                   : "somente regras estáticas"}
               {preflightStale && !preflightRunning ? " · medições desatualizadas" : ""}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              Diagnóstico da visualização do editor; release valida /print em media=print.
             </span>
             <button
               type="button"
@@ -199,14 +202,14 @@ export function PreflightPanel() {
               onClick={() => downloadPreflightJson(preflight)}
               className="border border-border px-2 py-1 text-[11px] hover:bg-accent"
             >
-              report.json
+              report.json · screen
             </button>
             <button
               type="button"
               onClick={() => downloadPreflightHtml(preflight)}
               className="border border-border px-2 py-1 text-[11px] hover:bg-accent"
             >
-              report.html
+              report.html · screen
             </button>
           </div>
 
@@ -228,7 +231,7 @@ export function PreflightPanel() {
           </div>
 
           <footer className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
-            {book.meta.title} · {book.pages.length} páginas · fingerprint{" "}
+            Diagnóstico screen do editor · release em /print (media=print) · {book.meta.title} · {book.pages.length} páginas · fingerprint{" "}
             {preflight.book.fingerprint}
           </footer>
         </div>

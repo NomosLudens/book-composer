@@ -9,7 +9,7 @@ export function serializeBook(book: Book): string {
   return `${JSON.stringify(bookSnapshot(book), null, 2)}\n`;
 }
 
-export function downloadBookJson(book: Book, filename = "kallistis-book.json") {
+export function downloadBookJson(book: Book, filename = "book-project.json") {
   const blob = new Blob([serializeBook(book)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -55,7 +55,7 @@ export async function portableBook(book: Book): Promise<Book> {
 
 export async function downloadPortableBookJson(
   book: Book,
-  filename = "kallistis-book.portable.json",
+  filename = "book-project.portable.json",
 ) {
   downloadBookJson(await portableBook(book), filename);
 }
@@ -81,7 +81,7 @@ export async function savePortableBookAs(book: Book, suggestedName: string): Pro
   if (picker) {
     const handle = await picker({
       suggestedName,
-      types: [{ description: "Projeto KALLISTIS", accept: { "application/json": [".json"] } }],
+      types: [{ description: "Projeto BOOK-COMPOSER", accept: { "application/json": [".json"] } }],
     });
     const writable = await handle.createWritable();
     await writable.write(content);

@@ -86,12 +86,16 @@
   widows: 2;
   text-align: justify;
   hyphens: none;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
   word-break: normal;
 }
 
 .k-body p + p {
   text-indent: 4.6mm;
+}
+
+.k-body--flow-continuation p {
+  text-indent: 0;
 }
 
 .k-body--text-box {

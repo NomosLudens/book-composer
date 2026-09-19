@@ -11,13 +11,14 @@ import type {
   HeadingBlock,
   ImageBlock,
   LockupBlock,
+  ListBlock,
   QuoteBlock,
   TableBlock,
   TextBlock,
   TocBlock,
   ShapeBlock,
 } from "../types";
-import { Markdown } from "../renderer/markdown";
+import { Markdown, MarkdownInline } from "../renderer/markdown";
 import { resolveAssetSrc } from "../../lib/assets/registry";
 import { normalizeTableBlock, tableHeaderRows } from "../tableModel";
 
@@ -53,6 +54,7 @@ export function BodyText({ block }: { block: TextBlock }) {
   const classes = [
     "k-body",
     block.role && block.role !== "body" ? `k-body--${block.role}` : "",
+    block.metadata?.["flowFragment"] ? "k-body--flow-continuation" : "",
     block.dropCap ? "k-body--dropcap" : "",
   ]
     .filter(Boolean)
@@ -87,6 +89,19 @@ export function BodyText({ block }: { block: TextBlock }) {
       <Markdown source={block.content} />
     </div>
   );
+}
+
+export function BookList({ block }: { block: ListBlock }) {
+  const List = block.ordered ? "ol" : "ul";
+  const renderItems = (items: ListBlock["items"], prefix: string) => (
+    items.map((item, index) => (
+      <li key={`${prefix}-${index}`}>
+        <Markdown source={item.content} />
+        {item.children?.length ? <ul>{renderItems(item.children, `${prefix}-${index}`)}</ul> : null}
+      </li>
+    ))
+  );
+  return <List className="k-list">{renderItems(block.items, block.id)}</List>;
 }
 
 export function BookImage({ block }: { block: ImageBlock }) {
@@ -155,7 +170,7 @@ export function PullQuote({ block }: { block: QuoteBlock }) {
       className={`k-quote k-quote--${block.size ?? "md"} k-quote--${block.variant ?? "plain"}`}
       style={{ textAlign: block.align === "justify" ? "left" : block.align }}
     >
-      <p className="k-quote__text">{block.text}</p>
+      <p className="k-quote__text"><MarkdownInline source={block.text} /></p>
       {block.attribution ? <p className="k-quote__attr">{block.attribution}</p> : null}
     </blockquote>
   );
@@ -296,7 +311,7 @@ export function BookTable({ block }: { block: TableBlock }) {
 }
 
 function renderTableCellContent(content: string): ReactNode {
-  return <>{content}</>;
+  return <MarkdownInline source={content} />;
 }
 
 export function BookBox({ block }: { block: BoxBlock }) {

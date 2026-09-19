@@ -3,9 +3,9 @@ import { TEMPLATES } from "./templates";
 
 let pageSequence = 0;
 
-export function createEmptyPage(template: TemplateId, reference?: Page): Page {
+export function createEmptyPage(template: TemplateId, reference?: Page, stableId?: string): Page {
   return {
-    id: `page-${Date.now().toString(36)}-${(pageSequence += 1)}`,
+    id: stableId ?? `page-${Date.now().toString(36)}-${(pageSequence += 1)}`,
     template,
     variant: TEMPLATES[template].variants[0],
     part: reference?.part,

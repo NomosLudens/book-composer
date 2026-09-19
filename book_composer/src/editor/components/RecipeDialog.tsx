@@ -71,6 +71,8 @@ function describeBlock(block: Block): string {
       return block.text || "Título vazio";
     case "text":
       return block.content.split("\n")[0] || "Texto vazio";
+    case "list":
+      return block.items[0]?.content || "Lista vazia";
     case "image":
       return block.alt || "Imagem sem descrição";
     case "quote":

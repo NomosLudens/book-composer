@@ -545,6 +545,12 @@ async function exportFromSnapshot(request: Request): Promise<Response> {
     await fs.unlink(snapshotPath).catch(() => undefined);
     return json({ ok: false, error: "pdf_not_found", message: String(error) }, 500);
   }
+  // Preserve the last production export as a local artifact in addition to
+  // returning it as a browser download. This makes the real export auditable
+  // even when the browser download surface is unavailable to the host.
+  const exportDir = path.resolve(process.cwd(), "dist", "export");
+  await fs.mkdir(exportDir, { recursive: true });
+  await fs.writeFile(path.join(exportDir, "kallistis-book-composer-latest.pdf"), pdfBytes);
   // Cleanup tmp files (best-effort)
   await fs.unlink(snapshotPath).catch(() => undefined);
   await fs.unlink(outputPath).catch(() => undefined);

@@ -28,7 +28,6 @@ import type {
 import { TEMPLATES } from "../../book/templates";
 import { createEmptyPage } from "../../book/page-factory";
 import { demoBook } from "../../data/demo-book";
-import { canonicalBook } from "../../data/canonical-book";
 import { emptyBook } from "../../data/empty-book";
 import {
   getActiveLocalProjectId,

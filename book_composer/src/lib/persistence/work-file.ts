@@ -124,7 +124,7 @@ export async function openWorkFile(): Promise<File> {
   }
   const [handle] = await picker({
     multiple: false,
-    types: [{ description: "Projeto KALLISTIS", accept: { "application/json": [".json"] } }],
+    types: [{ description: "Projeto BOOK-COMPOSER", accept: { "application/json": [".json"] } }],
   });
   if (!handle) throw new Error("Nenhum arquivo de trabalho foi selecionado.");
   const file = await handle.getFile();

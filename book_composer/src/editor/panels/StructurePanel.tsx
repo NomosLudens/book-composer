@@ -60,7 +60,7 @@ function PageRow({ page, index }: { page: Page; index: number }) {
         aria-current={selected ? "page" : undefined}
         data-testid={`page-row-${page.id}`}
       >
-        <PageThumbnail book={book} page={page} index={index} />
+        <PageThumbnail book={book} page={page} index={index} selected={selected} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-foreground">
             {page.fixed ? "🔒 " : ""}

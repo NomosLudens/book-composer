@@ -72,9 +72,9 @@
 .k-table--technique-catalog td {
   min-width: 0;
   white-space: normal;
-  overflow-wrap: normal;
-  word-break: normal;
-  hyphens: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .k-table--dense-records {
@@ -95,6 +95,11 @@
   color: var(--k-purple);
   font-weight: 700;
   padding-bottom: 1.6mm;
+}
+
+.k-table th > p,
+.k-table td > p {
+  margin: 0;
 }
 
 .k-table thead th {
@@ -130,9 +135,12 @@
   border-color: var(--table-border-color, var(--k-border));
   min-width: 0;
   max-width: none;
-  overflow-wrap: normal;
-  word-break: normal;
-  hyphens: manual;
+  /* Print preflight measures the real 14×21 cm content box. Long
+     identifiers and compact rules labels must be allowed to wrap instead
+     of expanding the table beyond the page. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .k-table[data-table-border="none"] th,

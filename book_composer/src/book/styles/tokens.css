@@ -37,10 +37,10 @@
   --font-body: Georgia, "Times New Roman", serif;
   --font-functional: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
 
-  /* Geometria física padrão: A4 (trim) + 3 mm bleed → 213×300 mm (PDF).
+  /* Geometria física padrão: 14 × 21 cm (trim) + 3 mm bleed.
      Sobrescreva em book.tokens para outros formatos. */
-  --page-width: 210mm;
-  --page-height: 297mm;
+  --page-width: 140mm;
+  --page-height: 210mm;
   --bleed: 3mm;
   --margin-inner: 18mm;
   --margin-outer: 14mm;

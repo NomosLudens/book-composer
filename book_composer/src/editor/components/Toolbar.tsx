@@ -7,7 +7,7 @@ import {
   parseSmartPaste,
   serializeAsciiLayout,
 } from "../../book/authoring";
-import { createTableBlock } from "../../book/tableModel";
+import { createTableBlock, normalizeTableBlock } from "../../book/tableModel";
 import {
   blankSheet,
   cloneSheetForInsert,
@@ -33,6 +33,17 @@ import {
 } from "../../lib/persistence/local";
 import { getWorkFileName, openWorkFile, saveBookToWorkFile } from "../../lib/persistence/work-file";
 import { createEmptyBook, type EmptyBookInput } from "../../data/empty-book";
+import { transformDocumentToBook, parseMarkdownDocument, splitMarkdownTableForFlow, splitMarkdownTextForFlow } from "../../book/markdown-book";
+import { EditorialMeasurementSurface } from "../../book/EditorialMeasurementSurface";
+import { editorialUnitsFromDocument, materializeGeometricPages, paginateEditorialUnits, type EditorialUnit, type PaginationMeasurement } from "../../book/editorial-units";
+import type { Book } from "../../book/types";
+
+type MeasurementJob = {
+  book: Book;
+  units: EditorialUnit[];
+  blocksByUnit: Map<string, Block[]>;
+  resolve: (book: Book) => void;
+};
 
 const OVERLAY_LABELS: { key: keyof Overlays; label: string }[] = [
   { key: "rulers", label: "Réguas" },
@@ -56,6 +67,12 @@ const FORMAT_PRESETS: Record<
 };
 
 const ZOOMS: ZoomValue[] = ["fit", 0.5, 0.75, 1];
+
+const READY_BOOKS = [
+  { id: "ready-kallistis-manual-do-mundo", label: "KALLISTIS — Manual do Mundo", path: "/projects/kallistis-manual-do-mundo-reconstrucao.json" },
+  { id: "ready-kallistis-livro-ii", label: "KALLISTIS — Livro II: Regras do Jogo", path: "/projects/kallistis-livro-ii-regras-do-jogo.json" },
+  { id: "ready-velarim-manual", label: "VELARIM — Manual Definitivo", path: "/projects/velarim-manual-definitivo.json" },
+] as const;
 
 const NEW_BLOCKS: { type: BlockType; label: string }[] = [
   { type: "heading", label: "Título" },
@@ -227,6 +244,7 @@ export function Toolbar() {
     "smart" | "ascii" | "form" | "sheet" | "recipes" | null
   >(null);
   const [authoringText, setAuthoringText] = useState("");
+  const [measurementJob, setMeasurementJob] = useState<MeasurementJob | null>(null);
   const [formTitle, setFormTitle] = useState("Ficha de personagem");
   const [formColumns, setFormColumns] = useState<1 | 2>(1);
   const [sheetPreset, setSheetPreset] = useState("blank");
@@ -237,6 +255,105 @@ export function Toolbar() {
   const savedTime = lastSavedAt
     ? new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(lastSavedAt)
     : null;
+
+  const importMarkdownGeometrically = (source: string) => {
+    const document = parseMarkdownDocument(source);
+    const draft = transformDocumentToBook(document);
+    const sourceUnits = editorialUnitsFromDocument(document);
+    const sourceBlocksByUnit = new Map<string, Block[]>();
+    draft.pages.forEach((page) => page.blocks.forEach((block) => {
+      const unitId = String(block.metadata?.["editorialUnitId"] ?? "");
+      if (!unitId) return;
+      const existing = sourceBlocksByUnit.get(unitId) ?? [];
+      existing.push(block);
+      sourceBlocksByUnit.set(unitId, existing);
+    }));
+    const units: EditorialUnit[] = [];
+    const blocksByUnit = new Map<string, Block[]>();
+    for (const unit of sourceUnits) {
+      const sourceBlocks = sourceBlocksByUnit.get(unit.id) ?? [];
+      const toc = sourceBlocks.find((block): block is Extract<Block, { type: "toc" }> => block.type === "toc");
+      if (toc && toc.entries.length > 30) {
+        const chunkSize = Math.ceil(toc.entries.length / 3);
+        Array.from({ length: Math.ceil(toc.entries.length / chunkSize) }, (_, index) => toc.entries.slice(index * chunkSize, (index + 1) * chunkSize)).forEach((entries, index) => {
+          const chunkId = index === 0 ? unit.id : `${unit.id}-continuation-${index}`;
+          const continuation: Extract<Block, { type: "toc" }> = { ...toc, id: index === 0 ? toc.id : `${toc.id}-continuation-${index}`, columns: 2, entries, metadata: { ...toc.metadata, editorialUnitId: chunkId } };
+          const leadingBlocks = index === 0
+            ? sourceBlocks.filter((block) => block.type !== "toc")
+            : [{ id: `${toc.id}-continuation-heading-${index}`, type: "heading" as const, level: 2 as const, text: "Sumário — continuação", metadata: { provenanceKind: "SYNTHETIC_EDITORIAL", editorialUnitId: chunkId } }];
+          units.push({ ...unit, id: chunkId, keepWithNext: false, ...(index > 0 ? { breakBefore: true } : {}) });
+          blocksByUnit.set(chunkId, [...leadingBlocks, continuation]);
+        });
+        continue;
+      }
+      const table = sourceBlocks.length === 1 && sourceBlocks[0]?.type === "table" ? normalizeTableBlock(sourceBlocks[0]) : null;
+      const text = sourceBlocks.length === 1 && sourceBlocks[0]?.type === "text" ? sourceBlocks[0] : null;
+      const chunks = table ? splitMarkdownTableForFlow(table, 650) : text ? splitMarkdownTextForFlow(text) : [];
+      if (chunks.length <= 1) {
+        units.push(unit);
+        blocksByUnit.set(unit.id, sourceBlocks);
+        continue;
+      }
+      chunks.forEach((chunk, index) => {
+        const chunkId = index === 0 ? unit.id : `${unit.id}-continuation-${index}`;
+        units.push({
+          ...unit,
+          id: chunkId,
+          ...(index === 0
+            ? unit.keepWithNext === undefined
+              ? {}
+              : { keepWithNext: unit.keepWithNext }
+            : { keepWithNext: false }),
+        });
+        blocksByUnit.set(chunkId, [{ ...chunk, metadata: { ...chunk.metadata, editorialUnitId: chunkId } }]);
+      });
+    }
+    return new Promise<Book>((resolve) => setMeasurementJob({ book: draft, units, blocksByUnit, resolve }));
+  };
+
+  const completeMeasurement = (measurements: Map<string, PaginationMeasurement>) => {
+    if (!measurementJob) return;
+    const measurementPage = document.querySelector<HTMLElement>(".k-editorial-measurement-page");
+    const content = measurementPage?.querySelector<HTMLElement>(".k-page__content");
+    const contentHeight = content?.clientHeight || content?.getBoundingClientRect().height || 0;
+    const pageHeight = measurementPage?.getBoundingClientRect().height || 0;
+    // A quebra transforma um fluxo contínuo em um novo contexto de margem.
+    // Reservar uma pequena fração da caixa evita que margens colapsadas e
+    // arredondamentos do navegador reapareçam como overflow na página final.
+    const measuredHeight = contentHeight || pageHeight;
+    const availableHeight = Math.max(0, measuredHeight * 0.98);
+    const pagination = paginateEditorialUnits(measurementJob.units, measurements, availableHeight);
+    const assignedUnitIds = new Set(pagination.pages.flatMap((page) => page.unitIds));
+    const unassignedUnits = measurementJob.units.filter((unit) => !assignedUnitIds.has(unit.id));
+    const fillRatios = pagination.pages.map((page) => page.fillRatio);
+    const unitsPerPage = pagination.pages.map((page) => page.unitIds.length);
+    const diagnosticCounts = Object.fromEntries([...new Set(pagination.diagnostics.map((diagnostic) => diagnostic.type))].map((type) => [type, pagination.diagnostics.filter((diagnostic) => diagnostic.type === type).length]));
+    const breakReasonCounts = Object.fromEntries([...new Set(pagination.pages.map((page) => page.breakReason))].map((reason) => [reason, pagination.pages.filter((page) => page.breakReason === reason).length]));
+    const oversizedUnitIds = pagination.diagnostics.filter((diagnostic) => diagnostic.type === "OVERSIZED_UNSPLITTABLE_UNIT").map((diagnostic) => diagnostic.unitId);
+    console.info("[book-composer] geometric paginator", JSON.stringify({
+      availableHeight,
+      measurementCount: measurements.size,
+      unitCount: measurementJob.units.length,
+      pageCount: pagination.pages.length,
+      totalUnitReferences: pagination.pages.reduce((count, page) => count + page.unitIds.length, 0),
+      assignedUnitCount: assignedUnitIds.size,
+      unassignedUnitCount: unassignedUnits.length,
+      unassignedByKind: Object.fromEntries([...new Set(unassignedUnits.map((unit) => unit.kind))].map((kind) => [kind, unassignedUnits.filter((unit) => unit.kind === kind).length])),
+      firstUnassignedIndex: unassignedUnits.length ? measurementJob.units.findIndex((unit) => unit.id === unassignedUnits[0]!.id) : null,
+      lastUnassignedIndex: unassignedUnits.length ? measurementJob.units.findIndex((unit) => unit.id === unassignedUnits.at(-1)!.id) : null,
+      diagnostics: pagination.diagnostics.length,
+      diagnosticCounts,
+      breakReasonCounts,
+      fillRatio: { average: fillRatios.reduce((sum, value) => sum + value, 0) / Math.max(1, fillRatios.length), median: [...fillRatios].sort((a, b) => a - b)[Math.floor(fillRatios.length / 2)] ?? 0, min: Math.min(...fillRatios), max: Math.max(...fillRatios) },
+      fillBuckets: { "0-10": fillRatios.filter((value) => value >= 0 && value < 0.1).length, "10-25": fillRatios.filter((value) => value >= 0.1 && value < 0.25).length, "25-50": fillRatios.filter((value) => value >= 0.25 && value < 0.5).length, "50-75": fillRatios.filter((value) => value >= 0.5 && value < 0.75).length, "75-90": fillRatios.filter((value) => value >= 0.75 && value < 0.9).length, "90-100": fillRatios.filter((value) => value >= 0.9 && value <= 1).length, above100: fillRatios.filter((value) => value > 1).length },
+      unitsPerPage: { one: unitsPerPage.filter((value) => value === 1).length, two: unitsPerPage.filter((value) => value === 2).length, threeToFive: unitsPerPage.filter((value) => value >= 3 && value <= 5).length, sixToTen: unitsPerPage.filter((value) => value >= 6 && value <= 10).length, elevenPlus: unitsPerPage.filter((value) => value >= 11).length, average: unitsPerPage.reduce((sum, value) => sum + value, 0) / Math.max(1, unitsPerPage.length), median: [...unitsPerPage].sort((a, b) => a - b)[Math.floor(unitsPerPage.length / 2)] ?? 0, min: Math.min(...unitsPerPage), max: Math.max(...unitsPerPage) },
+      oversizedUnitIds,
+    }));
+    const finalBook = materializeGeometricPages(measurementJob.book, measurementJob.units, pagination, measurementJob.blocksByUnit);
+    const resolve = measurementJob.resolve;
+    setMeasurementJob(null);
+    resolve(finalBook);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -307,9 +424,9 @@ export function Toolbar() {
   const openPrint = () => {
     if (errors > 0) {
       const proceed = window.confirm(
-        `PREFLIGHT: ${errors} ERROR(S) no livro.\n\n` +
-          "A exportação de produção pode perder conteúdo (texto cortado, arte fora do trim, asset ausente).\n\n" +
-          "Confirmar a abertura do modo impressão mesmo com erros?",
+        `DIAGNÓSTICO DO EDITOR (screen): ${errors} ERROR(S) no livro.\n\n` +
+          "Este diagnóstico auxilia a revisão da visualização do editor. A autoridade final de release é /print em media=print.\n\n" +
+          "Confirmar a abertura do modo impressão?",
       );
       if (!proceed) {
         openPreflight();
@@ -327,9 +444,9 @@ export function Toolbar() {
   const generatePdf = async () => {
     if (errors > 0) {
       const proceed = window.confirm(
-        `PREFLIGHT: ${errors} ERROR(S) no livro.\n\n` +
-          "O diálogo nativo pode permitir salvar um PDF com conteúdo cortado ou asset ausente.\n\n" +
-          "Continuar mesmo assim?",
+        `DIAGNÓSTICO DO EDITOR (screen): ${errors} ERROR(S) no livro.\n\n` +
+          "A impressão nativa é uma saída auxiliar. A autoridade final de release é /print em media=print.\n\n" +
+          "Continuar para a impressão nativa?",
       );
       if (!proceed) {
         openPreflight();
@@ -364,8 +481,9 @@ export function Toolbar() {
   const exportOptimizedPdf = async () => {
     if (errors > 0) {
       const proceed = window.confirm(
-        `PREFLIGHT: ${errors} ERROR(S) no livro.\n\n` +
-          "O PDF de produção pode perder conteúdo.\n\nContinuar mesmo assim?",
+        `DIAGNÓSTICO DO EDITOR (screen): ${errors} ERROR(S) no livro.\n\n` +
+          "O exportador oficial reexecutará a validação final em /print com media=print.\n\n" +
+          "Continuar para o exportador oficial?",
       );
       if (!proceed) {
         openPreflight();
@@ -472,6 +590,18 @@ export function Toolbar() {
     }
     switchLocalProject(localProjectId, next);
     setProjectLibraryOpen(false);
+  };
+
+  const openReadyBook = async (readyBook: (typeof READY_BOOKS)[number]) => {
+    try {
+      const response = await fetch(readyBook.path, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const nextBook = await response.json();
+      await saveNow();
+      switchLocalProject(readyBook.id, nextBook);
+    } catch (error) {
+      window.alert(`Não foi possível abrir “${readyBook.label}”.\n\n${String(error)}`);
+    }
   };
 
   const openProjectInWindow = (localProjectId: string) => {
@@ -770,6 +900,28 @@ export function Toolbar() {
           </div>
         </details>
 
+        <details className="relative">
+          <summary className="cursor-pointer list-none border border-primary bg-primary/10 px-2 py-1 text-[11px] text-foreground hover:bg-accent">
+            Livros ▾
+          </summary>
+          <div className="absolute left-0 top-full z-50 grid min-w-[260px] gap-1 border border-border bg-card p-2 shadow-xl">
+            <div className="px-2 pb-1 text-[10px] text-muted-foreground">
+              Livros prontos disponíveis no aplicativo
+            </div>
+            {READY_BOOKS.map((readyBook) => (
+              <button
+                key={readyBook.id}
+                type="button"
+                data-testid={`ready-book-${readyBook.id}`}
+                className="border border-border px-2 py-1 text-left text-[11px] hover:bg-accent"
+                onClick={() => void openReadyBook(readyBook)}
+              >
+                {readyBook.label}
+              </button>
+            ))}
+          </div>
+        </details>
+
         <span className="sr-only">Inserção adicional disponível no menu Inserir.</span>
 
         <div className="ml-auto flex items-center gap-2">
@@ -782,14 +934,14 @@ export function Toolbar() {
               errors > 0 ? "border-destructive text-destructive" : "border-border hover:bg-accent"
             }`}
           >
-            {preflightRunning ? "Preflight…" : "Preflight"}
+            {preflightRunning ? "Preflight do editor…" : "Preflight do editor"}
           </button>
           <button
             type="button"
             onClick={openPreflight}
             className="k-editor-preflight-summary"
-            aria-label={`Preflight: ${errors} erros, ${warnings} avisos, ${infos} informações`}
-            title={`${errors} Errors · ${warnings} Warnings · ${infos} Info. Abrir relatório de preflight.`}
+            aria-label={`Preflight do editor (screen): ${errors} erros, ${warnings} avisos, ${infos} informações`}
+            title={`${errors} Errors · ${warnings} Warnings · ${infos} Info. Diagnóstico da visualização screen do editor; abrir relatório.`}
           >
             <span className={errors > 0 ? "text-destructive" : "text-[#246b4a]"} aria-hidden="true">
               {errors > 0 ? "✕" : "✓"}
@@ -838,7 +990,7 @@ export function Toolbar() {
             data-testid="generate-pdf"
             onClick={() => void generatePdf()}
             className="border border-border px-2 py-1 text-[11px] hover:bg-accent"
-            title="Salva o estado atual e abre o diálogo nativo para salvar como PDF"
+            title="Saída auxiliar de impressão do navegador; a autoridade final de release é /print em media=print"
           >
             Gerar PDF
           </button>
@@ -848,7 +1000,7 @@ export function Toolbar() {
             disabled={optimizedPdfBusy}
             onClick={() => void exportOptimizedPdf()}
             className="border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
-            title="Exporta o estado atual pelo pipeline de produção (Playwright + Ghostscript /printer) — mesmo snapshot do editor chega ao PDF final."
+            title="Exporta pelo pipeline oficial de release (Playwright + Ghostscript /printer); a validação final ocorre em /print com media=print"
           >
             {optimizedPdfBusy ? "Exportando…" : "Exportar PDF Otimizado"}
           </button>
@@ -888,7 +1040,7 @@ export function Toolbar() {
                 onClick={() =>
                   void savePortableBookAs(
                     book,
-                    `${book.meta.title || "kallistis-projeto"}.json`,
+                    `${book.meta.title || "book-project"}.json`,
                   ).catch((error) => {
                     window.alert(`Não foi possível salvar a cópia: ${String(error)}`);
                   })
@@ -1383,7 +1535,7 @@ export function Toolbar() {
             ) : authoringOpen === "form" ? (
               <form
                 className="space-y-3"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
                   const block = createFormBlock(
                     `form-${Date.now().toString(36)}`,
@@ -1436,7 +1588,7 @@ export function Toolbar() {
             ) : authoringOpen === "sheet" ? (
               <form
                 className="space-y-4"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
                   const id = `sheet-${Date.now().toString(36)}`;
                   const templateId = sheetPreset.startsWith("template:")
@@ -1520,7 +1672,7 @@ export function Toolbar() {
             ) : (
               <form
                 className="space-y-3"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
                   if (authoringOpen === "ascii") {
                     const parsed = parseAsciiLayout(authoringText);
@@ -1529,6 +1681,12 @@ export function Toolbar() {
                     if (parsed.title) updatePage(selectedPage.id, { title: parsed.title });
                     if (parsed.template) setTemplate(selectedPage.id, parsed.template);
                   } else {
+                    if (authoringOpen === "smart" && /^#{1,2}\s+/mu.test(authoringText)) {
+                      const finalBook = await importMarkdownGeometrically(authoringText);
+                      replaceBook(finalBook);
+                      closeAuthoring();
+                      return;
+                    }
                     const parsed = parseSmartPaste(authoringText);
                     if (parsed.blocks.length === 0) return;
                     addBlocks(parsed.blocks);
@@ -1576,6 +1734,14 @@ export function Toolbar() {
             )}
           </div>
         </div>
+      ) : null}
+      {measurementJob ? (
+        <EditorialMeasurementSurface
+          book={measurementJob.book}
+          units={measurementJob.units}
+          blocksByUnit={measurementJob.blocksByUnit}
+          onMeasured={completeMeasurement}
+        />
       ) : null}
     </>
   );

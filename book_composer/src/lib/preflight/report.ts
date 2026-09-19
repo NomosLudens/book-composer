@@ -40,7 +40,7 @@ export function buildReport(
   const issues = sortIssues(book, [...staticIssues(book), ...measured]);
   return {
     schemaVersion: 1,
-    tool: "KALLISTIS BOOK BUILDER · preflight",
+    tool: "BOOK-COMPOSER · preflight",
     generatedAt: options.generatedAt ?? new Date().toISOString(),
     book: {
       title: book.meta.title,

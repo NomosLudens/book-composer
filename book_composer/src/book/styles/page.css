@@ -10,6 +10,21 @@
   box-sizing: border-box;
 }
 
+.k-editorial-measurement-surface {
+  position: absolute;
+  left: -100000px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.k-editorial-measurement-page {
+  position: relative;
+  width: var(--page-width);
+  min-height: var(--page-height);
+  height: auto;
+}
+
 .k-page--obsidian {
   background: var(--k-obsidian);
 }
@@ -38,6 +53,12 @@
   column-count: 2;
   column-gap: var(--column-gap);
   column-fill: auto;
+}
+
+.k-flow--2col-overflow-reflow {
+  height: auto;
+  min-height: 100%;
+  column-fill: balance;
 }
 
 /* Texto narrativo balanceia as duas colunas; o fluxo sequencial deixava uma
@@ -93,6 +114,23 @@
   padding: 0.7mm 1.1mm;
 }
 
+/* Fechamento editorial: regras densas continuam legíveis, mas não podem
+   transformar uma linha final em uma terceira coluna física. */
+.k-page--rules_2col {
+  --rules-leading: 12pt;
+}
+
+.k-page--rules_2col .k-table-wrap {
+  margin-top: 0.5mm;
+  margin-bottom: 0.5mm;
+}
+
+.k-page--rules_2col .k-table--compact tbody td,
+.k-page--rules_2col .k-table--compact thead th {
+  padding-top: 0.5mm;
+  padding-bottom: 0.5mm;
+}
+
 .k-block {
   break-inside: avoid-column;
 }
@@ -105,7 +143,7 @@
 
 .k-block--text {
   break-inside: auto;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
   word-break: normal;
   hyphens: none;
 }
@@ -358,6 +396,7 @@
 .k-cover__product {
   font-family: var(--font-display);
   font-size: 22pt;
+  line-height: 1.15;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin: 8mm 0 2mm;
@@ -845,6 +884,10 @@
 .k-quadrant-visual {
   width: 48mm;
   min-width: 0;
+}
+
+.k-page--chapter_opening .k-chapter--quadrant {
+  row-gap: 2mm;
 }
 
 .k-quadrant-art {
