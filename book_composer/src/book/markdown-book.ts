@@ -42,11 +42,11 @@ function looksLikeMarkdownTable(raw: string): boolean {
 
 export function parseMarkdownDocument(source: string, sourceFile?: string): MarkdownDocument {
   const fm = frontMatter(source); const tokens = marked.lexer(fm.body, { gfm: true }); const cursor = { offset: source.length - fm.body.length }; const lineStarts = [0]; for (let i = 0; i < source.length; i += 1) if (source[i] === "\n") lineStarts.push(i + 1); const nodes: DocumentNode[] = []; const diagnostics: MarkdownDocument["diagnostics"] = [];
-  (tokens as Array<Record<string, any>>).forEach((token, index) => {
+  (tokens as Array<Record<string, unknown>>).forEach((token, index) => {
     const raw = String(token["raw"] ?? ""); const range = sourceRange(raw, source, cursor, lineStarts); const markedType = String(token["type"] ?? "unknown"); const type = markedType === "paragraph" && looksLikeMarkdownTable(raw) ? "table" : markedType; const metadata: Record<string, unknown> = { raw };
     if (type === "list") { metadata["ordered"] = Boolean(token["ordered"]); metadata["items"] = listItems(token["items"]); }
     const node = { id: `markdown-node-${index + 1}`, type, source: range, ...(typeof token["text"] === "string" ? { text: token["text"] } : {}), ...(typeof token["depth"] === "number" ? { level: token["depth"] } : {}), metadata } as DocumentNode;
-    if (Array.isArray(token["tokens"])) node.children = token["tokens"].map((child: Record<string, any>, childIndex: number) => ({ id: `${node.id}-child-${childIndex + 1}`, type: String(child["type"] ?? "inline"), source: range, ...(typeof child["text"] === "string" ? { text: child["text"] } : {}), metadata: { raw: child["raw"] ?? "" } } as DocumentNode));
+    if (Array.isArray(token["tokens"])) node.children = token["tokens"].map((child: Record<string, unknown>, childIndex: number) => ({ id: `${node.id}-child-${childIndex + 1}`, type: String(child["type"] ?? "inline"), source: range, ...(typeof child["text"] === "string" ? { text: child["text"] } : {}), metadata: { raw: child["raw"] ?? "" } } as DocumentNode));
     if (["html", "link", "image", "code"].includes(node.type)) diagnostics.push({ type: node.type, source: range, message: "Preservado no IR; conversão visual ainda não implementada." });
     nodes.push(node);
   });
