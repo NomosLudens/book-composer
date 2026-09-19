@@ -7,6 +7,20 @@ work/builds/
 output/
 *.pdf
 
+# Private editorial corpora must never return to the public Book Composer repository
+01_FONTE_UNICA/
+source/
+work/
+03_OUTPUT_ESPERADO/*.docx
+book_composer/projects/KALLISTIS_MANUAL_DO_MUNDO_v4*.json
+book_composer/projects/KALLISTIS_manual_do_mundo_final_book*
+book_composer/projects/kallistis-manual-do-mundo-reconstrucao.json
+book_composer/projects/kallistis-livro-ii-regras-do-jogo.json
+book_composer/projects/kallistis-materializado-*.json
+book_composer/docs/imagens_curadoria/KALLISTIS_MANUSCRITO_FINAL_CONGELADO_v2.md
+book_composer/contact-sheets/KALLISTIS_*
+book_composer/KALLISTIS_Manual_do_Mundo_v1.5_400p_CANDIDATO-*_1.png
+
 # Generated / packaged / checkpoint files ignored during consolidation
 03_OUTPUT_ESPERADO/render_report.json
 KALLISTIS_SKILL_ESCRITA_AUTORAL_v1.0.zip

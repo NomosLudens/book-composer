@@ -135,6 +135,12 @@ KALLISTIS continua sendo o caso de regressão mais exigente do repositório:
 
 Isso prova o engine em um projeto editorial grande sem transformar KALLISTIS em requisito arquitetural.
 
+## Conteúdo editorial privado
+
+O repositório público distribui o **Book Composer**, não o manuscrito de KALLISTIS.
+
+Fontes integrais, working copies, snapshots editoriais completos, projetos JSON contendo o texto do livro e reproduções página a página não fazem parte da distribuição pública. KALLISTIS permanece citado apenas como caso de validação e pode fornecer assets pontuais necessários aos testes e à demonstração do engine.
+
 ## Estado verificado
 
 Estado promovido à `master` em **18/09/2026**.

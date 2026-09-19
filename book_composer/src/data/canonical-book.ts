@@ -1,5 +1,9 @@
-import project from "../../projects/kallistis-manual-do-mundo-reconstrucao.json";
-import { normalizeBook } from "../lib/persistence/local";
+import { emptyBook } from "./empty-book";
 
-/** Projeto editorial versionado usado como ponto de partida do BOOK-COMPOSER. */
-export const canonicalBook = normalizeBook(project);
+/**
+ * Compatibilidade histórica do módulo `canonical-book`.
+ *
+ * O Book Composer público não incorpora uma cópia do manuscrito KALLISTIS.
+ * O estado inicial canônico do produto é o livro vazio genérico.
+ */
+export const canonicalBook = emptyBook;
