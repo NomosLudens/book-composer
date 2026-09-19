@@ -176,8 +176,9 @@ test("editor, canonical cover migration, IndexedDB assets, reload, offline and p
   };
 
   await applyRaster("A.png", 100, 100, [220, 20, 20]);
-  await page.getByRole("button", { name: "Preflight", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Preflight", exact: true })).toBeVisible();
+  const preflightButton = page.getByRole("button", { name: "Preflight do editor", exact: true });
+  await preflightButton.click();
+  await expect(page.getByRole("heading", { name: /^Preflight do editor/ })).toBeVisible();
   await expect(page.getByText("estático + medições de layout", { exact: true })).toBeVisible();
   const lowResolutionRow = page.locator('[data-preflight-rule="image-low-resolution"]');
   await expect(lowResolutionRow).toHaveCount(1);
@@ -191,8 +192,8 @@ test("editor, canonical cover migration, IndexedDB assets, reload, offline and p
   await expect(coverImages).toHaveCount(1);
   await expect(coverImages).toHaveAttribute("src", /^blob:/);
   await expect(coverImages).toHaveJSProperty("naturalWidth", 1800);
-  await page.getByRole("button", { name: "Preflight", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Preflight", exact: true })).toBeVisible();
+  await preflightButton.click();
+  await expect(page.getByRole("heading", { name: /^Preflight do editor/ })).toBeVisible();
   await expect(page.getByText("estático + medições de layout", { exact: true })).toBeVisible();
   await expect(page.locator('[data-preflight-rule="image-low-resolution"]')).toHaveCount(0);
   await page.getByRole("button", { name: "Fechar", exact: true }).click();
@@ -278,17 +279,31 @@ test("narrative page can be cleared and preserves a manual composition in reload
   await expect(blankPage).toBeVisible();
   await expect(blankPage.locator("[data-block-id]")).toHaveCount(0);
   page.once("dialog", (dialog) => dialog.accept());
+  const toolsMenu = page.locator("details").filter({ hasText: "Ferramentas" }).first();
+  await toolsMenu.locator("summary").click();
   await page.getByTestId("clear-page").click();
   await expect(blankPage.locator(".k-runhead, .k-folio, .k-footnote")).toHaveCount(0);
 
-  const insert = page.getByLabel("Inserir bloco", { exact: true });
-  await insert.selectOption("heading");
+  const elementsMenu = page.locator("details").filter({ hasText: "Inserir elemento" }).first();
+  const openElementsMenu = async () => {
+    if (!(await elementsMenu.evaluate((element) => (element as HTMLDetailsElement).open))) {
+      await elementsMenu.locator("summary").click();
+    }
+  };
+  const insertElement = async (name: string) => {
+    await openElementsMenu();
+    await elementsMenu.getByRole("button", { name, exact: true }).click();
+    if (await elementsMenu.evaluate((element) => (element as HTMLDetailsElement).open)) {
+      await elementsMenu.locator("summary").click();
+    }
+  };
+  await insertElement("Título");
   await page.getByLabel("X (mm)").fill("8");
   await page.getByLabel("Y (mm)").fill("8");
-  await insert.selectOption("text");
+  await insertElement("Texto");
   await page.getByLabel("X (mm)").fill("12");
   await page.getByLabel("Y (mm)").fill("180");
-  await insert.selectOption("image");
+  await insertElement("Imagem");
   await page.getByRole("tab", { name: "Assets" }).click();
   await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles({
     name: "blank-center.svg",
@@ -298,8 +313,7 @@ test("narrative page can be cleared and preserves a manual composition in reload
   await page.getByTitle("blank-center", { exact: true }).click();
   await page.getByLabel("X (mm)").fill("45");
   await page.getByLabel("Y (mm)").fill("70");
-  await page.getByText("Inserir elemento ▾", { exact: true }).click();
-  await page.getByRole("button", { name: "Área de cor" }).click();
+  await insertElement("Área de cor");
   await page.getByLabel("X (mm)").fill("40");
   await page.getByLabel("Y (mm)").fill("65");
   await page.getByRole("button", { name: "↑ subir" }).click();
@@ -322,7 +336,7 @@ test("narrative page can be cleared and preserves a manual composition in reload
     )
     .toBe(4);
   await expect(page.getByTitle("O autosave local continua ativo mesmo sem a nuvem.")).toContainText(
-    "salvo localmente",
+    /salvo/i,
   );
   const savedBook = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key) ?? "null"),

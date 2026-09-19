@@ -7,7 +7,10 @@ test("Free Canvas MVP compõe, transforma, amplia e persiste frames", async ({ p
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/kallistis-favicon.svg");
   const faviconResponse = await page.request.get("/kallistis-favicon.svg");
   expect(faviconResponse.status()).toBe(200);
-  await expect(page.getByTestId("frame-tool")).toBeVisible();
+  const elementsMenu = page.locator("details").filter({ hasText: "Inserir elemento" }).first();
+  await elementsMenu.locator("summary").click();
+  await expect(elementsMenu.getByRole("button", { name: "Desenhar frame", exact: true })).toBeVisible();
+  await elementsMenu.locator("summary").click();
   await expect(page.getByRole("tab", { name: "Páginas" })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "Assets" }).click();
   await expect(page.getByPlaceholder("Buscar…")).toBeVisible();
@@ -21,7 +24,7 @@ test("Free Canvas MVP compõe, transforma, amplia e persiste frames", async ({ p
   const projectMenu = page.locator("details").filter({ hasText: "Projeto" }).first();
   await projectMenu.locator("summary").click();
   await expect(projectMenu.getByText("Exportar JSON do projeto", { exact: true })).toBeVisible();
-  await expect(projectMenu.getByText("Importar JSON do projeto", { exact: true })).toBeVisible();
+  await expect(projectMenu.getByText("Abrir JSON do projeto", { exact: true })).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
   await projectMenu.getByText("Exportar JSON do projeto", { exact: true }).click();
   await expect((await downloadPromise).suggestedFilename()).toMatch(/\.json$/);
@@ -36,7 +39,7 @@ test("Free Canvas MVP compõe, transforma, amplia e persiste frames", async ({ p
       mimeType: "application/json",
       buffer: Buffer.from(importPayload),
     });
-  await expect(page.getByTestId("frame-tool")).toBeVisible();
+  await expect(elementsMenu).toBeVisible();
   const templateField = page.getByLabel("Template");
   await expect(templateField.locator("option")).toHaveCount(13);
   await expect(templateField.locator("option", { hasText: /branco/i })).toHaveCount(0);
@@ -47,6 +50,8 @@ test("Free Canvas MVP compõe, transforma, amplia e persiste frames", async ({ p
   await narrativeThumbnail.locator("xpath=ancestor::button[1]").click();
 
   page.once("dialog", (dialog) => dialog.accept());
+  const toolsMenu = page.locator("details").filter({ hasText: "Ferramentas" }).first();
+  await toolsMenu.locator("summary").click();
   await page.getByTestId("clear-page").click();
 
   const canvas = page.getByTestId("editor-canvas");
@@ -55,7 +60,8 @@ test("Free Canvas MVP compõe, transforma, amplia e persiste frames", async ({ p
   expect(pageBox).not.toBeNull();
   const box = pageBox!;
 
-  await page.getByTestId("frame-tool").click();
+  await elementsMenu.locator("summary").click();
+  await elementsMenu.getByRole("button", { name: "Desenhar frame", exact: true }).click();
   await page.mouse.move(box.x + 45, box.y + 45);
   await page.mouse.down();
   await page.mouse.move(box.x + 185, box.y + 150);
@@ -74,7 +80,8 @@ test("Free Canvas MVP compõe, transforma, amplia e persiste frames", async ({ p
   await page.mouse.up();
   await expect(editorPage.getByTestId("block-resize-handle-nw")).toBeVisible();
 
-  await page.getByTestId("frame-tool").click();
+  await elementsMenu.locator("summary").click();
+  await elementsMenu.getByRole("button", { name: "Desenhar frame", exact: true }).click();
   await page.mouse.move(box.x + 210, box.y + 60);
   await page.mouse.down();
   await page.mouse.move(box.x + 335, box.y + 165);
@@ -93,6 +100,16 @@ test("Free Canvas MVP compõe, transforma, amplia e persiste frames", async ({ p
   await page.getByRole("button", { name: "Centro", exact: true }).click();
   await page.getByRole("button", { name: "1/4", exact: true }).first().click();
   await page.getByRole("button", { name: "3/4", exact: true }).first().click();
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+        return saved?.pages?.find((item: { blocks?: Array<{ content?: string }> }) =>
+          item.blocks?.some((block) => block.content === "KALLISTIS"),
+        )?.id;
+      }, storageKey),
+    )
+    .toBeTruthy();
   const composedPageId = await page.evaluate((key) => {
     const saved = JSON.parse(localStorage.getItem(key) ?? "null");
     return saved.pages.find((item: { blocks?: Array<{ content?: string }> }) =>
