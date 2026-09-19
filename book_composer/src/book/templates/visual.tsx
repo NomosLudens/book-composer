@@ -1,0 +1,142 @@
+import { BlockList } from "../renderer/BlockRenderer";
+import { findImage, withoutBlock, type TemplateProps } from "./types";
+import { ResolvedImage } from "../components/BookComponents";
+
+/** FULL_ART — arte entre ~50% e 100% da página. Ritmo e imersão. */
+export function FullArtTemplate({ page }: TemplateProps) {
+  const art = findImage(page.blocks);
+  const rest = withoutBlock(page.blocks, art);
+  const fullBleed = page.settings.fullBleed || art?.fullBleed;
+  const spreadSide = art?.spreadSide;
+
+  if (!art) {
+    return (
+      <div className="k-flow">
+        <BlockList blocks={rest} />
+      </div>
+    );
+  }
+
+  if (fullBleed) {
+    if (page.variant === "bestiary-opening") {
+      return (
+        <>
+          <div className="k-bleed" data-block-id={art.id}>
+            <ResolvedImage
+              className="k-bleed--img"
+              src={art.src}
+              alt={art.alt}
+              style={{
+                objectFit: art.fit ?? "cover",
+                objectPosition: `${art.objectX ?? 50}% ${art.objectY ?? 50}%`,
+                transform: art.mirror ? "scaleX(-1)" : undefined,
+              }}
+            />
+          </div>
+          <div className="k-bestiary-opening__panel" data-full-art-copy="true">
+            <BlockList blocks={rest} />
+          </div>
+        </>
+      );
+    }
+    return (
+      <>
+        <div
+          className="k-bleed"
+          data-block-id={art.id}
+          style={spreadSide ? { overflow: "hidden" } : undefined}
+        >
+          <ResolvedImage
+            className="k-bleed--img"
+            src={art.src}
+            alt={art.alt}
+            style={
+              spreadSide
+                ? {
+                    position: "absolute",
+                    top: 0,
+                    left: spreadSide === "right" ? "-100%" : 0,
+                    height: "100%",
+                    // The source is 4:3 while the two-sheet envelope is slightly
+                    // wider; use the full two-page width so the outer edges never
+                    // expose the paper background.
+                    width: "200%",
+                    maxWidth: "none",
+                    objectFit: "cover",
+                    objectPosition: "center",
+                    display: "block",
+                  }
+                : {
+                    objectFit: art.fit ?? "cover",
+                    objectPosition: `${art.objectX ?? 50}% ${art.objectY ?? 50}%`,
+                  }
+            }
+          />
+        </div>
+        {art.caption ? <p className="k-art__caption">{art.caption}</p> : null}
+      </>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateRows: "auto 1fr", height: "100%", gap: "5mm" }}>
+      <div data-block-id={art.id} style={{ height: art.height ?? "62%" }}>
+        <ResolvedImage
+          src={art.src}
+          alt={art.alt}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: art.fit ?? "cover",
+            objectPosition: `${art.objectX ?? 50}% ${art.objectY ?? 50}%`,
+            display: "block",
+          }}
+        />
+        {art.caption ? <p className="k-caption">{art.caption}</p> : null}
+      </div>
+      <div className="k-flow">
+        <BlockList blocks={rest} />
+      </div>
+    </div>
+  );
+}
+
+/** MAP_PAGE — mapa, diagrama, esquema. Legibilidade antes de textura. */
+export function MapPageTemplate({ page }: TemplateProps) {
+  const map = findImage(page.blocks);
+  const rest = withoutBlock(page.blocks, map);
+  const hasOwnHeading = rest.some((block) => block.type === "heading" && block.text === page.title);
+  return (
+    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr", height: "100%" }}>
+      <div>
+        {page.eyebrow ? <p className="k-eyebrow">{page.eyebrow}</p> : null}
+        {page.title && !hasOwnHeading ? (
+          <h1 className="k-h2" style={{ marginTop: 0, marginBottom: "3mm" }}>
+            {page.title}
+          </h1>
+        ) : null}
+      </div>
+      {map ? (
+        <figure data-block-id={map.id} style={{ margin: "0 0 4mm", height: map.height ?? "52%" }}>
+          <ResolvedImage
+            src={map.src}
+            alt={map.alt}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: map.fit ?? "contain",
+              objectPosition: `${map.objectX ?? 50}% ${map.objectY ?? 50}%`,
+              display: "block",
+            }}
+          />
+          {map.caption ? <figcaption className="k-caption">{map.caption}</figcaption> : null}
+        </figure>
+      ) : (
+        <div />
+      )}
+      <div className={`k-flow${page.settings.columns === 2 ? " k-flow--2col" : ""}`}>
+        <BlockList blocks={rest} />
+      </div>
+    </div>
+  );
+}

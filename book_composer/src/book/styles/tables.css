@@ -1,0 +1,168 @@
+/* KALLISTIS — tabelas editoriais: header forte, corpo limpo, poucas bordas. */
+
+.k-table-wrap {
+  position: relative;
+  margin: 3mm 0 4.5mm;
+  box-sizing: border-box;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.k-table-graphic {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.k-table-graphic--line {
+  min-height: 0;
+  border-bottom-style: solid;
+  background: transparent;
+}
+
+.k-table-graphic--circle {
+  border-radius: 50%;
+}
+
+.k-table-graphic--label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1mm;
+  font-size: 8pt;
+  text-align: center;
+}
+
+.k-table-wrap[data-allow-page-break="true"] {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+/* A tabela canônica de namol tem duas colunas e, em rules_2col, o cálculo
+   fechado do Chromium acrescenta 1mm ao envelope. Reserva essa folga sem
+   alterar conteúdo, pesos ou a largura das demais tabelas. */
+.k-table-wrap[data-table-id="src-5114eccaf679ee044a0f"] .k-table {
+  width: calc(100% - 1mm);
+}
+
+.k-table-wrap[data-table-id="src-5114eccaf679ee044a0f"] .k-table--compact th,
+.k-table-wrap[data-table-id="src-5114eccaf679ee044a0f"] .k-table--compact td {
+  padding-left: 1.3mm;
+  padding-right: 1.3mm;
+}
+
+.k-table {
+  width: 100%;
+  box-sizing: border-box;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: var(--font-functional);
+  font-size: var(--table-size);
+  line-height: 1.32;
+  color: var(--table-text-color, var(--k-ink));
+}
+
+.k-table--technique-catalog {
+  width: 100%;
+  box-sizing: border-box;
+  table-layout: fixed;
+}
+
+.k-table--technique-catalog th,
+.k-table--technique-catalog td {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.k-table--dense-records {
+  width: 100%;
+}
+
+.k-table col {
+  min-width: 0;
+}
+
+.k-table caption {
+  caption-side: top;
+  text-align: left;
+  font-family: var(--font-functional);
+  font-size: 8pt;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--k-purple);
+  font-weight: 700;
+  padding-bottom: 1.6mm;
+}
+
+.k-table th > p,
+.k-table td > p {
+  margin: 0;
+}
+
+.k-table thead th {
+  background: var(--table-header-bg, var(--k-purple));
+  color: var(--table-header-color, var(--k-paper));
+  text-align: left;
+  font-weight: 700;
+  padding: var(--table-padding-y, 1.6mm) var(--table-padding-x, 2mm);
+  letter-spacing: 0.04em;
+}
+
+.k-table tbody td {
+  padding: var(--table-padding-y, 1.4mm) var(--table-padding-x, 2mm);
+  border-bottom: var(--table-border-width, 0.2mm) solid var(--table-border-color, var(--k-border));
+  vertical-align: top;
+  background: var(--table-body-bg, transparent);
+}
+
+.k-table[data-table-zebra="true"] tbody tr:nth-child(even) td {
+  background: var(--table-zebra-bg, var(--k-field));
+}
+
+.k-table tbody td:first-child {
+  font-weight: 600;
+  color: var(--k-ink);
+}
+
+.k-table thead th,
+.k-table tbody td,
+.k-table tfoot td,
+.k-table tfoot th {
+  box-sizing: border-box;
+  border-color: var(--table-border-color, var(--k-border));
+  min-width: 0;
+  max-width: none;
+  /* Print preflight measures the real 14×21 cm content box. Long
+     identifiers and compact rules labels must be allowed to wrap instead
+     of expanding the table beyond the page. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.k-table[data-table-border="none"] th,
+.k-table[data-table-border="none"] td {
+  border: 0;
+}
+
+.k-table[data-table-border="grid"] th,
+.k-table[data-table-border="grid"] td {
+  border: var(--table-border-width, 0.2mm) solid var(--table-border-color, var(--k-border));
+}
+
+.k-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.k-table--compact tbody td,
+.k-table--compact thead th {
+  padding: 1mm 1.6mm;
+}
+
+.k-table thead {
+  display: table-header-group;
+}

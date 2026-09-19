@@ -1,0 +1,219 @@
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import type { Book } from "../book/types";
+import { BookRoot } from "../book/renderer/BookRoot";
+import { PageRenderer } from "../book/renderer/PageRenderer";
+import { loadLocalBook, normalizeBook } from "../lib/persistence/local";
+import { registerBookAssets } from "../lib/assets/registry";
+import { buildReport } from "../lib/preflight/report";
+import { measureIssues } from "../lib/preflight/measure";
+import { emptyBook } from "../data/empty-book";
+
+const title = "BOOK-COMPOSER — impressão";
+const description =
+  "Rota de impressão genérica do BOOK-COMPOSER: renderiza apenas páginas do livro ativo, sem interface de editor.";
+
+export const Route = createFileRoute("/print")({
+  validateSearch: (search: Record<string, unknown>): { src?: string; autoprint?: boolean } => ({
+    ...(typeof search["src"] === "string" ? { src: search["src"] } : {}),
+    ...(search["autoprint"] === "1" ? { autoprint: true } : {}),
+  }),
+  head: () => ({
+    meta: [
+      { title },
+      { name: "description", content: description },
+      { name: "robots", content: "noindex" },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
+    ],
+  }),
+  component: PrintView,
+});
+
+/**
+ * ROTA DE IMPRESSÃO: nenhuma UI de editor, nenhum overlay, nenhum scroll artificial.
+ * O Chromium imprime esta rota em 1:1 com as dimensões físicas dos tokens.
+ */
+function PrintView() {
+  const [, refreshAssets] = useState(0);
+  const { src, autoprint } = useSearch({ from: "/print" });
+  // O primeiro render precisa ser idêntico no SSR e no browser. O livro
+  // injetado/local é resolvido no efeito abaixo, depois da hidratação.
+  // Default = livro vazio genérico (sem KALLISTIS, sem nenhum projeto).
+  const [book, setBook] = useState<Book>(() => emptyBook);
+  const [sourceResolved, setSourceResolved] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => refreshAssets((value) => value + 1);
+    window.addEventListener("kallistis-asset-ready", refresh);
+    return () => window.removeEventListener("kallistis-asset-ready", refresh);
+  }, []);
+
+  /*
+   * Internal compositor bridge used by the materialization engine. It keeps
+   * measurement inside the real PrintView/PageRenderer without reloading the
+   * application for every candidate page. It is an event-only bridge: no UI,
+   * persistence, mock data, or production project state is changed.
+   */
+  useEffect(() => {
+    const materialize = (event: Event) => {
+      const detail = (event as CustomEvent<{ book?: unknown; revision?: number }>).detail;
+      if (!detail?.book) return;
+      try {
+        document.documentElement.dataset["printReady"] = "false";
+        if (detail.revision !== undefined) {
+          document.documentElement.dataset["materializerRevision"] = String(detail.revision);
+        }
+        setBook(normalizeBook(detail.book));
+        setSourceResolved(true);
+      } catch (error) {
+        console.error("[kallistis] JSON de materialização inválido", error);
+      }
+    };
+    window.addEventListener("kallistis-materializer-book", materialize);
+    return () => window.removeEventListener("kallistis-materializer-book", materialize);
+  }, []);
+
+  /* Assets embutidos no JSON precisam estar mapeados antes de pintar as páginas. */
+  registerBookAssets(book.assets);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSourceResolved(false);
+
+    const run = async () => {
+      // 1. JSON injetado pelo exportador (Playwright) — export reprodutível.
+      const injected = (window as unknown as { __KALLISTIS_BOOK__?: unknown }).__KALLISTIS_BOOK__;
+      if (injected) {
+        try {
+          if (!cancelled) {
+            setBook(normalizeBook(injected));
+            setSourceResolved(true);
+          }
+          return;
+        } catch (error) {
+          console.error("[kallistis] JSON injetado inválido", error);
+        }
+      }
+
+      // 2. ?src=/caminho/arquivo.json — export a partir de um arquivo servido.
+      if (src) {
+        try {
+          const response = await fetch(src);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const parsed = normalizeBook(await response.json());
+          if (!cancelled) {
+            setBook(parsed);
+            setSourceResolved(true);
+          }
+          return;
+        } catch (error) {
+          console.error("[kallistis] falha ao carregar JSON de", src, error);
+        }
+      }
+
+      // 3. Projeto local do editor.
+      const local = loadLocalBook();
+      if (!cancelled) {
+        if (local && local.pages.length > 0) setBook(local);
+        setSourceResolved(true);
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  useEffect(() => {
+    if (!sourceResolved) return;
+    let cancelled = false;
+    const flag = async () => {
+      const images = Array.from(document.images);
+      await Promise.all(
+        images.map((img) =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise<void>((resolve) => {
+                img.addEventListener("load", () => resolve(), { once: true });
+                img.addEventListener("error", () => resolve(), { once: true });
+              }),
+        ),
+      );
+      if (document.fonts?.ready) await document.fonts.ready;
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      if (cancelled) return;
+      /*
+       * Preflight completo (estático + medições no DOM impresso) publicado
+       * para o exportador auditar antes de gerar o PDF de produção.
+       */
+      const expectedIds = book.pages.map((page) => page.id);
+      const renderedIds = Array.from(
+        document.querySelectorAll<HTMLElement>(".k-page[data-page-id]"),
+        (page) => page.dataset["pageId"] ?? "",
+      );
+      if (
+        renderedIds.length !== expectedIds.length ||
+        renderedIds.some((id, index) => id !== expectedIds[index])
+      ) {
+        console.error("[kallistis] render incompleto em /print", {
+          expected: expectedIds.length,
+          rendered: renderedIds.length,
+        });
+        return;
+      }
+      const report = buildReport(book, measureIssues(document.body, book), { measured: true });
+      (window as unknown as { __KALLISTIS_PREFLIGHT__?: unknown }).__KALLISTIS_PREFLIGHT__ = report;
+      document.documentElement.dataset["preflightErrors"] = String(report.summary.errors);
+      const afterIds = Array.from(
+        document.querySelectorAll<HTMLElement>(".k-page[data-page-id]"),
+        (page) => page.dataset["pageId"] ?? "",
+      );
+      if (
+        afterIds.length !== expectedIds.length ||
+        afterIds.some((id, index) => id !== expectedIds[index])
+      ) {
+        console.error("[kallistis] render mudou durante o preflight de /print");
+        return;
+      }
+      if (!cancelled) document.documentElement.dataset["printReady"] = "true";
+      if (!cancelled && autoprint) {
+        window.setTimeout(() => window.print(), 120);
+      }
+    };
+    void flag();
+    return () => {
+      cancelled = true;
+    };
+  }, [autoprint, sourceResolved, book]);
+
+  return (
+    <BookRoot
+      tokens={book.tokens}
+      fonts={book.fonts}
+      className={`k-print${book.meta.prepressGrayscale ? " k-print--grayscale" : ""}`}
+    >
+      {/*
+       * AUTOCONTIDO: declara o tamanho físico da página a partir dos
+       * tokens do projeto, sem o consumidor precisar conhecer o
+       * formato. PDF generators que respeitam CSS @page size (Chromium
+       * com preferCSSPageSize) produzem o PDF no tamanho exato do
+       * documento, seja A4, 140×210 ou personalizado.
+       *
+       * A folha física (.k-print-sheet) é fixada em trim+bleed pelo CSS;
+       * aqui forçamos trim-only para o @page size e anulamos o offset de
+       * sangria dentro da folha — o mesmo padrão usado pelo pipeline
+       * scripts/export-pdf.mjs.
+       */}
+      <style>{`@page { size: ${book.tokens.pageWidth} ${book.tokens.pageHeight}; margin: 0; } .k-print-sheet { width: ${book.tokens.pageWidth} !important; height: ${book.tokens.pageHeight} !important; } .k-print-sheet > .k-page { left: 0 !important; top: 0 !important; }`}</style>
+      {book.pages.map((page, index) => (
+        <div key={page.id} className="k-print-sheet" data-page-index={index}>
+          <PageRenderer book={book} page={page} index={index} />
+        </div>
+      ))}
+    </BookRoot>
+  );
+}

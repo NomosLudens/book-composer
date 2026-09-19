@@ -1,0 +1,963 @@
+/* KALLISTIS — geometria da página, grid, header/footer, quebras. */
+
+.k-page {
+  position: relative;
+  width: var(--page-width);
+  height: var(--page-height);
+  background: var(--page-color, var(--k-paper));
+  color: var(--k-ink);
+  overflow: visible; /* overflow nunca é escondido silenciosamente */
+  box-sizing: border-box;
+}
+
+.k-editorial-measurement-surface {
+  position: absolute;
+  left: -100000px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.k-editorial-measurement-page {
+  position: relative;
+  width: var(--page-width);
+  min-height: var(--page-height);
+  height: auto;
+}
+
+.k-page--obsidian {
+  background: var(--k-obsidian);
+}
+
+/* Caixa de texto. Margem interna protege o vinco: depende da paridade. */
+.k-page__content {
+  position: absolute;
+  top: var(--margin-top);
+  bottom: var(--margin-bottom);
+  left: var(--margin-inner);
+  right: var(--margin-outer);
+  display: flow-root;
+}
+
+.k-page--verso .k-page__content {
+  left: var(--margin-outer);
+  right: var(--margin-inner);
+}
+
+.k-flow {
+  display: flow-root;
+  height: 100%;
+}
+
+.k-flow--2col {
+  column-count: 2;
+  column-gap: var(--column-gap);
+  column-fill: auto;
+}
+
+.k-flow--2col-overflow-reflow {
+  height: auto;
+  min-height: 100%;
+  column-fill: balance;
+}
+
+/* Texto narrativo balanceia as duas colunas; o fluxo sequencial deixava uma
+   coluna cheia e a outra curta em páginas com muitos blocos pequenos. */
+.k-page--narrative .k-flow--2col {
+  column-fill: balance;
+}
+
+/* Um título no rodapé da primeira coluna é uma quebra editorial ruim. */
+.k-page--narrative .k-flow--2col .k-block--heading {
+  break-after: avoid-column;
+}
+
+/* Em páginas de referência, a linha continua indivisível, mas o envelope da
+   tabela pode atravessar a coluna. Isso evita deixar uma continuação curta
+   isolada enquanto a coluna seguinte permanece vazia. */
+.k-page--rules .k-block--table,
+.k-page--rules_2col .k-block--table,
+.k-page--rules .k-block--table .k-table-wrap,
+.k-page--rules_2col .k-block--table .k-table-wrap {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+/* Compactação controlada de referência: mantém 9.5/8.5pt, reduz apenas
+   intervalos repetidos entre headings, parágrafos e linhas de tabela. */
+.k-page--rules .k-h2,
+.k-page--rules_2col .k-h2 {
+  margin-top: 2.5mm;
+  margin-bottom: 0.8mm;
+}
+
+.k-page--rules .k-h3,
+.k-page--rules .k-h4,
+.k-page--rules .k-h5,
+.k-page--rules_2col .k-h3,
+.k-page--rules_2col .k-h4,
+.k-page--rules_2col .k-h5 {
+  margin-top: 1.8mm;
+  margin-bottom: 0.5mm;
+}
+
+.k-page--rules .k-table-wrap,
+.k-page--rules_2col .k-table-wrap {
+  margin-top: 1mm;
+  margin-bottom: 1.5mm;
+}
+
+.k-page--rules .k-table--compact tbody td,
+.k-page--rules .k-table--compact thead th,
+.k-page--rules_2col .k-table--compact tbody td,
+.k-page--rules_2col .k-table--compact thead th {
+  padding: 0.7mm 1.1mm;
+}
+
+/* Fechamento editorial: regras densas continuam legíveis, mas não podem
+   transformar uma linha final em uma terceira coluna física. */
+.k-page--rules_2col {
+  --rules-leading: 12pt;
+}
+
+.k-page--rules_2col .k-table-wrap {
+  margin-top: 0.5mm;
+  margin-bottom: 0.5mm;
+}
+
+.k-page--rules_2col .k-table--compact tbody td,
+.k-page--rules_2col .k-table--compact thead th {
+  padding-top: 0.5mm;
+  padding-bottom: 0.5mm;
+}
+
+.k-block {
+  break-inside: avoid-column;
+}
+
+.k-block--span-full {
+  column-span: all;
+  clear: both;
+  break-inside: auto;
+}
+
+.k-block--text {
+  break-inside: auto;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: none;
+}
+
+/* Header editorial */
+.k-runhead {
+  position: absolute;
+  top: calc(var(--margin-top) - 8mm);
+  left: var(--margin-inner);
+  right: var(--margin-outer);
+  font-family: var(--font-functional);
+  font-size: var(--micro-size);
+  letter-spacing: normal;
+  text-transform: uppercase;
+  color: var(--k-muted);
+  border-bottom: 0.3mm solid var(--k-border);
+  padding-bottom: 1.6mm;
+}
+
+.k-page--verso .k-runhead {
+  left: var(--margin-outer);
+  right: var(--margin-inner);
+}
+
+.k-runhead--verso {
+  text-align: left;
+}
+.k-runhead--recto {
+  text-align: right;
+}
+
+/* Footer / folio: sempre na margem externa */
+.k-folio {
+  position: absolute;
+  bottom: calc(var(--margin-bottom) - 11mm);
+  font-family: var(--font-functional);
+  font-size: 8.5pt;
+  color: var(--k-muted);
+  font-variant-numeric: lining-nums;
+}
+
+.k-folio--recto {
+  right: var(--margin-outer);
+  text-align: right;
+}
+
+.k-folio--verso {
+  left: var(--margin-outer);
+  text-align: left;
+}
+
+.k-footnote {
+  position: absolute;
+  bottom: calc(var(--margin-bottom) - 11mm);
+  font-family: var(--font-functional);
+  font-size: 7pt;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--k-border);
+}
+
+.k-footnote--recto {
+  left: var(--margin-inner);
+}
+.k-footnote--verso {
+  right: var(--margin-inner);
+}
+
+/* Full bleed: ultrapassa o trim até a sangria */
+.k-bleed {
+  position: absolute;
+  inset: calc(var(--bleed) * -1);
+}
+
+.k-bleed img,
+.k-bleed--img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Full art must be anchored to the physical sheet, not to a text column.
+   The centered envelope also keeps the two halves of a spread continuous
+   when the template is rendered through the print route. */
+.k-page--full_art .k-bleed {
+  width: calc(var(--page-width) + (var(--bleed) * 2));
+  height: calc(var(--page-height) + (var(--bleed) * 2));
+  inset: calc(var(--bleed) * -1);
+  transform: none;
+}
+
+/* Quebras editoriais */
+.k-break-before {
+  break-before: page;
+  page-break-before: always;
+}
+
+.k-keep {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Aberturas */
+.k-part {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: grid;
+  align-content: end;
+  padding: var(--margin-top) var(--margin-outer) var(--margin-bottom) var(--margin-inner);
+}
+
+.k-part__rule {
+  width: 34mm;
+  height: 0.8mm;
+  background: var(--k-lime);
+  margin-bottom: 6mm;
+}
+
+.k-part__copy {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 118mm;
+  padding: 3mm 4mm 3.5mm;
+  background: rgba(8, 8, 14, 0.72);
+  border-left: 1mm solid var(--k-lime);
+  box-shadow: 0 2mm 8mm rgba(8, 8, 14, 0.28);
+}
+
+.k-part__label {
+  font-family: var(--font-functional);
+  font-size: 9pt;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  margin: 0 0 4mm;
+  color: var(--k-lime);
+}
+
+.k-part__title {
+  font-family: var(--font-display);
+  font-size: 31pt;
+  line-height: 1;
+  font-weight: 600;
+  margin: 0 0 6mm;
+  color: var(--k-paper);
+  text-shadow: 0 0 6mm rgba(0, 0, 0, 0.55);
+}
+
+.k-part__claim {
+  font-family: var(--font-display);
+  font-size: 13pt;
+  line-height: 1.35;
+  font-style: italic;
+  max-width: 105mm;
+  margin: 0;
+  color: var(--k-paper);
+  text-shadow: 0 0 4mm rgba(0, 0, 0, 0.6);
+}
+
+/* Gramática visual adaptada do fixture editorial legado: composição sem moldura decorativa. */
+.k-page--composition-part-hero .k-part__title {
+  max-width: 112mm;
+}
+
+.k-dedication {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 18mm;
+}
+
+.k-dedication .k-body {
+  max-width: 104mm;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.k-title-page {
+  min-height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.k-title-page .k-body {
+  max-width: 96mm;
+  text-align: center;
+}
+
+.k-timeline-milestone {
+  position: relative;
+  padding-left: 10mm;
+}
+
+.k-timeline-milestone::before {
+  content: "";
+  position: absolute;
+  top: 2mm;
+  bottom: 0;
+  left: 3mm;
+  width: 0.35mm;
+  background: var(--k-border);
+}
+
+.k-timeline-milestone .k-h3 {
+  position: relative;
+  margin-top: 6mm;
+  padding-bottom: 1mm;
+  border-bottom: 0.35mm solid var(--k-border);
+}
+
+.k-timeline-milestone .k-h3::before {
+  content: "";
+  position: absolute;
+  left: -10mm;
+  top: 0.7em;
+  width: 5mm;
+  height: 0.35mm;
+  background: var(--k-purple);
+}
+
+.k-page--composition-text-feature .k-body p:only-child {
+  max-width: 102mm;
+  margin-inline: auto;
+  text-align: left;
+}
+
+/* Capa */
+.k-cover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  text-align: center;
+  padding: 26mm var(--margin-outer) 18mm;
+}
+
+.k-cover__lockup {
+  align-self: center;
+  width: 108mm;
+  max-width: 100%;
+  height: auto;
+  mix-blend-mode: normal;
+}
+
+.k-cover__product {
+  font-family: var(--font-display);
+  font-size: 22pt;
+  line-height: 1.15;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 8mm 0 2mm;
+  font-weight: 600;
+}
+
+.k-cover__sub {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 12.5pt;
+  margin: 0;
+}
+
+.k-cover__foot {
+  font-family: var(--font-functional);
+  font-size: 8pt;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--k-border);
+}
+
+/* Full art / mapa */
+.k-art {
+  position: absolute;
+  inset: 0;
+}
+
+.k-art__caption {
+  position: absolute;
+  bottom: var(--margin-bottom);
+  left: var(--margin-inner);
+  right: var(--margin-outer);
+  font-family: var(--font-functional);
+  font-size: 8pt;
+  line-height: 1.4;
+  color: var(--k-paper);
+  text-shadow: 0 0 6mm rgba(8, 8, 14, 0.9);
+}
+
+/* Abertura do Bestiário: a arte ocupa a página inteira e o texto canônico
+   permanece vivo em uma faixa de leitura sobre a parte mais escura da cena. */
+.k-bestiary-opening__panel {
+  position: absolute;
+  z-index: 2;
+  left: var(--margin-outer);
+  right: var(--margin-outer);
+  bottom: var(--margin-bottom);
+  max-height: 104mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 4.5mm 5mm 4mm;
+  color: var(--k-paper);
+  background: rgb(8 8 14 / 88%);
+  border-left: 1.2mm solid var(--k-lime);
+  box-shadow: 0 1.5mm 5mm rgb(0 0 0 / 32%);
+  font-size: 9.5pt;
+  line-height: 12.5pt;
+}
+
+.k-bestiary-opening__panel .k-h1,
+.k-bestiary-opening__panel .k-h2,
+.k-bestiary-opening__panel .k-h3,
+.k-bestiary-opening__panel .k-h4,
+.k-bestiary-opening__panel .k-h5 {
+  color: var(--k-paper);
+}
+
+.k-bestiary-opening__panel .k-h1 {
+  font-size: 20pt;
+  line-height: 1.02;
+  margin-bottom: 2mm;
+}
+
+.k-bestiary-opening__panel .k-h2 {
+  font-size: 12.5pt;
+  line-height: 1.08;
+  margin-top: 3mm;
+  margin-bottom: 1mm;
+}
+
+.k-bestiary-opening__panel .k-h3,
+.k-bestiary-opening__panel .k-h4,
+.k-bestiary-opening__panel .k-h5 {
+  font-size: 10pt;
+  line-height: 1.1;
+  margin-top: 2mm;
+  margin-bottom: 0.7mm;
+}
+
+.k-bestiary-opening__panel .k-body p {
+  text-align: left;
+}
+
+.k-bestiary-opening__panel .k-body p + p {
+  text-indent: 0;
+  margin-top: 1.2mm;
+}
+
+/* Perfil (Povos, Ofícios, NPCs) */
+.k-profile {
+  display: grid;
+  gap: 0 var(--column-gap);
+  height: 100%;
+}
+
+.k-profile--portrait-left {
+  grid-template-columns: var(--portrait-w, 38%) 1fr;
+}
+.k-profile--portrait-right {
+  grid-template-columns: 1fr var(--portrait-w, 38%);
+}
+.k-profile__portrait {
+  position: relative;
+}
+.k-profile__portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.k-profile__portrait--auto img {
+  height: auto;
+}
+
+.k-profile__body {
+  display: flow-root;
+  min-width: 0;
+}
+
+.k-profile--dual .k-profile__portraits {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--column-gap);
+  margin-bottom: 5mm;
+}
+
+/* Fichas/formulários: marcação editorial real, sem controles falsos no print. */
+.k-form {
+  margin: 4mm 0;
+  border: 0.25mm solid var(--k-border);
+  padding: 4mm;
+  break-inside: avoid;
+}
+.k-form__title {
+  margin: 0 0 1.5mm;
+  color: var(--k-purple);
+  font-family: var(--font-functional);
+  font-size: 12pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.k-form__intro {
+  margin: 0 0 3mm;
+  font-size: 8.5pt;
+  color: var(--k-muted);
+}
+.k-form__fields {
+  display: grid;
+  gap: 3.5mm 5mm;
+}
+.k-form__fields--2 {
+  grid-template-columns: 1fr 1fr;
+}
+.k-form__field--multiline {
+  grid-column: 1 / -1;
+}
+.k-form__label {
+  margin-bottom: 1mm;
+  font-size: 8.5pt;
+  font-weight: 700;
+}
+.k-form__hint {
+  margin-bottom: 1mm;
+  font-size: 7pt;
+  color: var(--k-muted);
+}
+.k-form__line {
+  height: 6mm;
+  border-bottom: 0.25mm solid var(--k-border);
+}
+.k-form__lines {
+  height: calc(var(--form-lines, 3) * 6mm);
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(6mm - 0.25mm),
+    var(--k-border) calc(6mm - 0.25mm),
+    var(--k-border) 6mm
+  );
+}
+.k-form__checkbox {
+  font-size: 16pt;
+  line-height: 1;
+}
+
+.k-layout {
+  display: grid;
+  gap: 0;
+  min-height: 42mm;
+  margin: 3mm 0 4.5mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.k-layout__area {
+  min-width: 0;
+  min-height: 12mm;
+  overflow: hidden;
+  padding: 3mm;
+  border: 0.2mm solid var(--k-border);
+}
+.k-layout__area .k-block {
+  margin: 0;
+}
+.k-layout__area .k-figure {
+  height: 100%;
+  margin: 0;
+}
+.k-layout__area .k-figure img,
+.k-layout__area .k-image-placeholder {
+  min-height: 24mm;
+}
+.k-image-placeholder {
+  display: grid;
+  min-height: 28mm;
+  place-items: center;
+  border: 0.35mm dashed var(--k-border);
+  background: var(--k-field);
+  color: var(--k-muted);
+  font-family: var(--font-functional);
+  font-size: 8pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.k-recipe-slot-placeholder {
+  display: grid;
+  min-height: 16mm;
+  place-items: center;
+  gap: 1mm;
+  border: 0.35mm dashed var(--k-primary);
+  background: color-mix(in srgb, var(--k-primary) 7%, transparent);
+  color: var(--k-primary);
+  font-family: var(--font-functional);
+  font-size: 8pt;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.k-recipe-slot-placeholder span {
+  color: var(--k-muted);
+  font-size: 7pt;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+.k-layout--interactive .k-layout__area[data-layout-marker]::before {
+  display: block;
+  margin-bottom: 1mm;
+  color: var(--k-muted);
+  content: "@" attr(data-layout-marker);
+  font-family: var(--font-functional);
+  font-size: 7pt;
+  letter-spacing: 0.12em;
+}
+
+/* Sheet & Form Designer: documento físico preenchível, sem UI no print. */
+.k-sheet-document {
+  display: grid;
+  gap: 8mm;
+  width: 100%;
+}
+
+.k-sheet-page {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--sheet-paper, #f8f5ef);
+  color: var(--sheet-ink, #59324f);
+  box-shadow: 0 0 0 0.2mm rgba(89, 50, 79, 0.25);
+  isolation: isolate;
+}
+
+.k-sheet-document--print .k-sheet-page {
+  box-shadow: none;
+  break-after: page;
+}
+
+.k-sheet-element {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.k-sheet-element--text,
+.k-sheet-element--symbol {
+  white-space: pre-wrap;
+}
+
+.k-sheet-element--line,
+.k-sheet-element--divider {
+  min-height: 0.25mm;
+}
+
+.k-sheet-element--box {
+  border: 0.25mm solid currentColor;
+}
+
+.k-sheet-element--repeater {
+  display: grid;
+  grid-auto-rows: 1fr;
+  border-top: 0.2mm solid currentColor;
+}
+
+.k-sheet-element--repeater span,
+.k-sheet-element--table {
+  border-bottom: 0.2mm solid currentColor;
+}
+
+.k-sheet-element--table {
+  display: grid;
+  align-content: center;
+  padding: 1mm;
+}
+
+.k-sheet-element--image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.k-sheet-element--field {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.k-sheet-element--text-area {
+  align-items: stretch;
+}
+
+.k-sheet-field-label {
+  position: absolute;
+  top: -0.1em;
+  left: 0;
+  transform: translateY(-100%);
+  font-size: 0.7em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.k-sheet-field-control,
+.k-sheet-field-value {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.k-sheet-field-control--area,
+.k-sheet-field-value--area {
+  white-space: pre-wrap;
+}
+
+.k-sheet-field-value {
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
+.k-sheet-checkbox,
+.k-sheet-checkbox-input {
+  display: inline-grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.k-sheet-checkbox-input {
+  appearance: none;
+  border: 0.3mm solid currentColor;
+  cursor: pointer;
+}
+
+.k-sheet-checkbox-input:checked::after,
+.k-sheet-checkbox.is-checked::after {
+  content: "✓";
+}
+
+.k-sheet-scale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  font-size: 1.6em;
+}
+
+.k-sheet-scale span {
+  opacity: 0.45;
+}
+.k-sheet-scale span.is-active {
+  opacity: 1;
+}
+
+.k-sheet-element--calculated .k-sheet-field-value {
+  border-bottom: 0.2mm solid currentColor;
+}
+
+/* Abertura de capítulo — o conteúdo começa na mesma página */
+.k-chapter__band {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: var(--band-h, 40%);
+  margin-bottom: 6mm;
+  overflow: hidden;
+}
+
+.k-chapter__band img {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.k-chapter__number {
+  font-family: var(--font-functional);
+  font-size: 8.5pt;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--k-green-text);
+  margin: 0 0 2mm;
+}
+
+.k-chapter__title {
+  font-family: var(--font-display);
+  font-size: var(--h1-size);
+  line-height: 1.02;
+  font-weight: 600;
+  color: var(--k-purple);
+  margin: 0 0 3mm;
+}
+
+.k-chapter__rule {
+  width: 100%;
+  height: 0.4mm;
+  background: var(--k-purple);
+  opacity: 0.5;
+  margin-bottom: 4mm;
+}
+
+.k-chapter--side {
+  display: grid;
+  grid-template-columns: var(--band-w, 34%) 1fr;
+  gap: 0 var(--column-gap);
+  height: 100%;
+}
+
+.k-chapter--side .k-chapter__band {
+  height: 100%;
+  margin-bottom: 0;
+}
+
+/* Povos, Ofícios e Bestiário: grade física de identidade + apoio contextual. */
+.k-chapter--quadrant {
+  display: grid;
+  grid-template-columns: 48mm minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 5mm;
+  row-gap: 4mm;
+  height: 100%;
+  min-width: 0;
+}
+
+.k-quadrant-visual {
+  width: 48mm;
+  min-width: 0;
+}
+
+.k-page--chapter_opening .k-chapter--quadrant {
+  row-gap: 2mm;
+}
+
+.k-quadrant-art {
+  box-sizing: border-box;
+  width: 48mm;
+  height: 72mm;
+  padding: 1.6mm;
+  margin: 0;
+  overflow: hidden;
+  border: 0.45mm solid var(--k-purple);
+  background:
+    radial-gradient(circle at 18% 22%, rgb(84 40 105 / 0.1) 0 0.45px, transparent 0.75px),
+    linear-gradient(145deg, #ece7dd, #faf7f0 48%, #e1dcd2);
+  background-size: 5px 5px, auto;
+  break-inside: avoid;
+  position: relative;
+}
+
+.k-quadrant-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+.k-quadrant-copy {
+  min-width: 0;
+  min-height: 0;
+}
+
+.k-quadrant-rest {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.k-quadrant-rest .k-flow {
+  height: auto;
+}
+
+.k-quadrant-support-stack {
+  display: grid;
+  gap: 2mm;
+  margin-top: 2mm;
+}
+
+.k-quadrant-support {
+  box-sizing: border-box;
+  width: 48mm;
+  height: 27mm;
+  padding: 1.2mm;
+  margin: 0;
+  overflow: hidden;
+  border: 0.3mm solid color-mix(in srgb, var(--k-purple) 62%, transparent);
+  background:
+    radial-gradient(circle at 68% 30%, rgb(84 40 105 / 0.08) 0 0.45px, transparent 0.75px),
+    #eeeae2;
+  background-size: 5px 5px;
+  break-inside: avoid;
+}
+
+.k-quadrant-support--symbol {
+  width: 22mm;
+  height: 22mm;
+}
+
+.k-quadrant-support img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 50%;
+}

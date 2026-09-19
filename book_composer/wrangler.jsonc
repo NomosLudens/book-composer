@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "book-composer",
+  "compatibility_date": "2026-08-08",
+  "vars": {
+    "APP_VERSION": "book-composer-release-candidate",
+  },
+}
