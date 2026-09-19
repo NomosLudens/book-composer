@@ -39,3 +39,18 @@ test-results/
 
 # Backups (snapshots antes de edição destrutiva em scripts)
 *.bak
+
+# Private / production editorial material.
+# These may exist in a local KALLISTIS workspace, but are not part of the
+# public Book Composer distribution.
+projects/velarim-manual-definitivo.json
+_review/
+public/editorial-asset-manifest.json
+public/assets/v1.5-acervo/
+public/assets/v1.4-prepress/
+public/assets/v2-curated/
+public/assets/complete/
+public/assets/partes/
+public/assets/handoff/
+public/assets/editorial/
+public/assets/velarim/
