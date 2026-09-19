@@ -1,257 +1,279 @@
-# BOOK-COMPOSER
+<div align="center">
 
-### Editor / diagramador genérico de livros. KALLISTIS é um projeto de validação, não o produto.
+# Book Composer
 
----
+### Composição editorial estruturada, do manuscrito ao PDF.
 
-BOOK-COMPOSER é um editor visual local-first para composição editorial
-estruturada, com pipeline determinístico de PDF e modelo de livro
-serializável. Foi desenhado para levar um livro estruturado do
-manuscrito digitado a um arquivo pronto para impressão que respeita o
-trim físico definido pelo próprio projeto.
+**Automatize a repetição. Preserve a decisão editorial.**
 
-O produto é deliberadamente genérico:
+Um editor visual local-first para criar, paginar, revisar e exportar livros reais sem acoplar o engine a um único projeto.
 
-- qualquer livro pode existir no Book Maker (romance, livro de RPG,
-  suplemento, manual técnico, livro didático, catálogo, zine, livro
-  ilustrado, documentação, obra personalizada);
-- o formato físico (A5, A4, Letter, 6×9", 140×210 mm ou personalizado),
-  as margens, a sangria, as fontes e a paleta são **decisões do projeto**,
-  não do engine;
-- KALLISTIS é apenas um dos projetos que vivem dentro do Book Maker.
-  Continua sendo o melhor stress test do engine (423 páginas, 140×210 mm),
-  mas não define a arquitetura.
+[Por quê](#por-que-book-composer) · [Produto](#o-que-o-book-composer-faz) · [Autoridade editorial](#onde-a-autoridade-vive) · [Fluxo](#fluxo-editorial) · [Arquitetura](#arquitetura) · [Estado](#estado-verificado) · [Quick start](#quick-start)
 
-A régua de produto:
-
-> **O Book Maker deve conseguir criar um livro completamente novo,
-> não-KALLISTIS, em formato diferente, editá-lo, salvá-lo, reabri-lo e
-> gerar um PDF real — sem carregar nenhuma característica de KALLISTIS.**
+</div>
 
 ---
 
-## Estado atual
+> **O engine organiza. O preflight mede. A pessoa decide.**
 
-| Capacidade | Status |
-| --- | --- |
-| Engine genérico (KALLISTIS desacoplado) | PASS |
-| LIVRO TESTE genérico A4 — criar, editar, salvar, reabrir, /print, PDF | PASS |
-| KALLISTIS 423 p — abrir, editar, salvar, reabrir, /print, PDF 140×210 | PASS |
-| Work File real (Salvar como + Salvar + reabertura via IndexedDB) | PASS |
-| `/print` autocontido quanto ao tamanho (sem width/height explícitos) | PASS |
-| AssetBrowser sem duplicate-key warnings | PASS |
-| Build / Typecheck / Lint focal | PASS |
-| Erros fatais de browser | 0 |
+Book Composer é um editor / diagramador genérico de livros com modelo serializável, composição visual, preflight geométrico e pipeline determinístico de PDF.
 
----
+Ele nasceu durante a produção de **KALLISTIS — Manual do Mundo**, mas KALLISTIS não é o produto. É um projeto editorial real usado como stress test de um engine deliberadamente genérico.
 
-## Régua de produto (atualizada pós-pivô)
+## Por que Book Composer
 
-| Capacidade | Requisito |
-| --- | --- |
-| **Novo livro** | Criar projeto vazio sem depender de KALLISTIS |
-| **Abrir livro** | Abrir qualquer projeto válido |
-| **Salvar** | Arquivo de trabalho real (File System Access API) |
-| **Formato** | Dimensões configuráveis por projeto |
-| **Paginação** | Número dinâmico de páginas (1, 32, 96, 316, 423, 800+) |
-| **Conteúdo** | Texto, imagem, tabela, formas, sheets, etc. |
-| **Assets** | Biblioteca pertencente ao projeto |
-| **Estilos** | Definidos pelo projeto/template |
-| **Identidade** | Nenhuma identidade KALLISTIS obrigatória |
-| **Print** | Derivado das configurações do documento |
-| **PDF** | Mesmo tamanho físico configurado no projeto |
+Livros estruturados repetem muito trabalho mecânico: materialização de conteúdo, paginação, continuidade de blocos, aplicação de templates, conferência de margens, sangria, overflow, imagens e saída final.
 
-### Teste-gate definitivo
+Automatizar isso ajuda. Automatizar a decisão editorial, não.
 
-> Criar um livro completamente novo, não-KALLISTIS, em outro formato,
-> editá-lo, salvá-lo, reabri-lo e gerar um PDF real, sem quebrar o
-> projeto KALLISTIS que já funciona.
+O Book Composer separa essas camadas:
 
-Esse fluxo foi provado em smoke real no commit `6310292` — LIVRO TESTE
-A4 12 páginas + KALLISTIS 423 páginas coexistindo sem acoplamento.
+- o **engine** executa composição, persistência, medições e exportação;
+- o **projeto** define formato, identidade visual, conteúdo e regras locais;
+- o **editor humano** decide ritmo, hierarquia, imagem, composição e exceções;
+- o **preflight** reporta problemas físicos — não corrige silenciosamente o livro.
 
----
+A régua é simples:
 
-## Arquitetura (genérica)
+> **um livro novo deve poder existir sem carregar nenhuma característica obrigatória de KALLISTIS.**
 
+## O que o Book Composer faz
+
+- **Projetos de livro serializáveis** em JSON, com páginas, blocos, assets, fontes, spreads, templates e configurações editoriais.
+- **Formatos físicos por projeto** — A4, A5, Letter, 6×9", 140×210 mm ou dimensões personalizadas.
+- **Edição visual** com seleção, drag, resize, multiseleção, agrupamento, bloqueio, alinhamento e distribuição.
+- **Templates editoriais** para capa, front matter, partes, capítulos, narrativa, regras em colunas, perfis, tabelas, citações, arte, mapas e cronologia.
+- **Smart guides, réguas e grade** para composição manual precisa.
+- **Assets e camadas** integrados ao projeto.
+- **Persistência local** com snapshots, IndexedDB e File System Access API quando disponível.
+- **Preflight estático + geométrico** para overflow, trim, assets, tabelas e outras ocorrências editoriais.
+- **Superfície de impressão independente** em `/print`.
+- **Exportação PDF real** via Chromium / Playwright, respeitando o tamanho físico definido pelo projeto.
+- **Importação e materialização** de conteúdo estruturado para acelerar a construção inicial do livro.
+
+## Onde a autoridade vive
+
+| Camada | Responsabilidade | Não substitui |
+| --- | --- | --- |
+| **Engine** | renderizar, medir, paginar, persistir e exportar | julgamento editorial |
+| **Projeto** | definir formato, tipografia, paleta, assets, páginas e regras locais | engine genérico |
+| **Editor humano** | decidir composição, ritmo, hierarquia, imagens e exceções | automação |
+| **Preflight** | tornar erros físicos e editoriais visíveis | decisão sobre o que o livro deve ser |
+
+A regra operacional é:
+
+> **erro real deve aparecer; decisão editorial deve continuar legível.**
+
+## Genérico por construção
+
+O Book Composer não fixa:
+
+- identidade visual;
+- tamanho de página;
+- número de páginas;
+- família tipográfica;
+- paleta;
+- biblioteca de assets;
+- tipo de livro;
+- projeto de origem.
+
+O mesmo engine pode compor romance, livro de RPG, suplemento, manual técnico, livro didático, catálogo, zine, documentação ou obra ilustrada.
+
+KALLISTIS permanece como um projeto complexo de validação — não como default do engine.
+
+## Fluxo editorial
+
+```text
+manuscrito / conteúdo estruturado
+              ↓
+      importação / materialização
+              ↓
+       templates editoriais
+              ↓
+        páginas e spreads
+              ↓
+       edição visual humana
+              ↓
+            preflight
+              ↓
+          /print
+              ↓
+           PDF final
 ```
-BOOK MAKER
+
+A automação produz estrutura e reduz trabalho repetitivo. O ajuste editorial final continua explícito no canvas.
+
+## Preflight e PDF
+
+O produto distingue duas superfícies:
+
+- **screen** — diagnóstico da geometria do editor;
+- **print** — autoridade de release em `/print + media=print`.
+
+Essa separação evita fingir equivalência entre geometrias diferentes.
+
+O export normal usa o preflight de impressão como gate real. `--force` existe para diagnóstico e não altera regras nem medições.
+
+O pipeline de produção usa:
+
+- Chromium / Playwright;
+- página física derivada do projeto;
+- composição em `/print`;
+- geração de PDF no tamanho final configurado.
+
+## KALLISTIS como stress test
+
+KALLISTIS continua sendo o caso de regressão mais exigente do repositório:
+
+- **431 páginas**;
+- **140×210 mm**;
+- composição narrativa, regras em colunas, tabelas, imagens e páginas especiais;
+- save / reload / restore provados;
+- preflight final com **0 errors em screen e 0 errors em print**;
+- export normal sem `--force`;
+- PDF final estrutural e visualmente validado.
+
+Isso prova o engine em um projeto editorial grande sem transformar KALLISTIS em requisito arquitetural.
+
+## Estado verificado
+
+Estado promovido à `master` em **18/09/2026**.
+
+| Capacidade | Estado |
+| --- | --- |
+| Engine genérico | PASS |
+| Editor visual | PASS |
+| Thumbnail lazy-mount / DOM controlado | PASS |
+| Save / reload / restore | PASS |
+| Screen preflight | **0 errors** |
+| Print preflight | **0 errors** |
+| Export normal | PASS |
+| PDF final | PASS |
+| Typecheck | PASS |
+| Testes | PASS |
+| Build | PASS |
+
+Release verificado: `17daa4fd041eff4adcc7af172d3d21732f50bef9`.
+
+### Limite de evidência conhecido
+
+A conservação IR passou nos fixtures disponíveis, mas a prova contra uma fonte canônica externa não distribuída neste repositório não é afirmada como concluída.
+
+Isso é registrado como **evidence gap**, não como falha observada do engine.
+
+## Arquitetura
+
+```text
+BOOK COMPOSER
 │
-├── ENGINE GENÉRICO
-│   ├── páginas / blocos / spreads
-│   ├── assets
+├── ENGINE
+│   ├── modelo Book serializável
+│   ├── renderer de páginas e blocos
+│   ├── templates
+│   ├── edição visual
+│   ├── assets / layers
+│   ├── persistência
+│   ├── preflight
+│   └── /print + PDF
+│
+├── PROJETO
+│   ├── metadata
+│   ├── formato físico / bleed / margens
 │   ├── tipografia
-│   ├── estilos
-│   ├── layers
-│   ├── tabelas
-│   ├── guides / smart guides / réguas
-│   ├── undo/redo
-│   ├── persistência (localStorage + IndexedDB + File System Access API)
-│   └── exportação (/print + PDF)
+│   ├── aparência
+│   ├── assets
+│   ├── páginas / spreads
+│   └── configuração de exportação
 │
-├── PROJETO (decisões do livro)
-│   ├── metadata (título, autor, editora, idioma)
-│   ├── document (pageWidth, pageHeight, unit, orientation, bleed, margins)
-│   ├── typography (fonts, paragraphStyles, headingStyles)
-│   ├── appearance (palette, background, defaults)
-│   ├── assets (project-owned)
-│   ├── pages (blocks/elements)
-│   └── export configuration
-│
-└── PRESETS / TEMPLATES
-    ├── Romance
-    ├── RPG
-    ├── Manual técnico
-    ├── A5 / A4 / Letter / 6×9" / personalizado
-    └── projetos personalizados (incluindo KALLISTIS como template)
+└── CONTEÚDO / MATERIALIZAÇÃO
+    ├── Markdown estruturado
+    ├── importadores
+    ├── materializadores
+    └── presets / projetos editoriais
 ```
 
-KALLISTIS vive **apenas** no terceiro nível. O engine não conhece
-KALLISTIS. O `DEFAULT_TOKENS` é A4 neutro (210×297mm), a paleta base é
-cinza, a fonte display é Georgia, a fonte funcional é system-ui. KALLISTIS
-entra quando o usuário escolhe o template/projeto KALLISTIS.
+### Stack
 
----
-
-## O que o engine faz (e o que ele NÃO faz)
-
-### O engine faz
-
-- **Composição**: páginas, blocos, templates, escala, colunas, baseline grid.
-- **Edição visual**: drag, multi-select, undo/redo, properties, snapping.
-- **Persistência**: autosave localStorage, File System Access API (work
-  file), IndexedDB para assets binários, JSON portátil exportável.
-- **Preflight**: regras estáticas + medições de layout (overflow, assets
-  ausentes, resolução efetiva, ocorrências editoriais).
-- **PDF**: pipeline determinístico (Playwright + pdfunite + Ghostscript)
-  que respeita o `document.pageWidth × pageHeight` do projeto.
-
-### O engine NÃO faz
-
-- assumir que toda biblioteca de assets é KALLISTIS;
-- fixar trim de 140×210mm ou qualquer outro formato;
-- fixar fonte (EB Garamond era acoplamento histórico, agora removido);
-- hardcodar identidade visual (paleta roxa KALLISTIS removida da base);
-- fixar número de páginas — suporta 1, 32, 96, 316, 423, 800+.
-
----
+- TypeScript
+- React 19
+- TanStack Start / Router
+- Vite 8
+- Bun
+- Playwright / Chromium
+- IndexedDB
+- File System Access API
+- Cloudflare adapters disponíveis para ambientes compatíveis
 
 ## Quick start
 
 ```bash
-cd book_composer
+git clone https://github.com/NomosLudens/book-composer.git
+cd book-composer/book_composer
 bun install --frozen-lockfile
-bun run dev -- --host 127.0.0.1 --port 4185
+bun run dev
 ```
 
-O editor abre em `http://127.0.0.1:4185/`. A rota `/` é o editor; `/print`
-é a renderização limpa (sem UI de editor) usada para impressão e PDF.
+O editor abre na rota `/`. A rota `/print` é a superfície limpa usada para impressão e PDF.
 
-Criar um novo projeto: menu **Projeto � → Novo projeto → Novo livro**
-(Form: A4/A5/Letter/6×9"/140×210/personalizado; páginas iniciais
-configuráveis; título e autor).
+Para checks principais:
 
-Salvar:
-- **Salvar** — snapshot em localStorage + (se houver arquivo vinculado)
-  grava no arquivo de trabalho real via File System Access API.
-- **Salvar como…** — escolhe arquivo novo, vincula-o para Saves futuros.
-- **Exportar PDF Otimizado** — chama o pipeline de produção.
-
----
-
-## KALLISTIS — papel atual
-
-KALLISTIS é um projeto Book Maker real, completo, com 423 páginas em
-140×210mm, fonte EB Garamond, paleta proprietária e identidade visual
-definida. Continua sendo:
-
-- o **melhor stress test** do engine (projeto grande, trim incomum,
-  tipografia proprietária, layout editorial denso);
-- um **template/preset** instalável e válido;
-- uma **referência de regressão** para garantir que o motor não regride
-  para projetos grandes e complexos.
-
-Não é mais:
-- a identidade visual default do engine;
-- a fonte default do editor;
-- o caso de uso exclusivo;
-- o motivo pelo qual o produto existe.
-
-O JSON `projects/kallistis-manual-do-mundo-reconstrucao.json` continua
-sendo aceito pelo editor e renderizado corretamente — foi apenas
-despromovido de "default" para "um dos projetos".
-
----
-
-## Stack
-
-**Aplicação**
-- TypeScript
-- React 19
-- TanStack Start / TanStack Router
-- Vite 8
-- Nitro (Node e Cloudflare adapters)
-
-**Pipeline de produção (PDF)**
-- Playwright (Chromium)
-- pdfunite (poppler)
-- Ghostscript (`-dPDFSETTINGS=/printer`)
-
-**Persistência**
-- localStorage
-- IndexedDB
-- File System Access API (Chromium)
-
-**Infraestrutura**
-- Cloudflare (Wrangler / D1 / R2) — disponível para o adapter Cloudflare.
-  O pipeline de PDF otimizado roda em Node, não na edge, por design.
-
----
-
-## Repositório
-
+```bash
+bun run typecheck
+bun run test
+bun run build
 ```
-kallistis-book/
-├── README.md            ← este arquivo
+
+Para exportação PDF:
+
+```bash
+bun run export:pdf -- --in <projeto.json> --out <arquivo.pdf> --url <url-do-app>
+```
+
+## Estrutura do repositório
+
+```text
+book-composer/
+├── README.md
 └── book_composer/
-    ├── README.md        ← guia de instalação / dev / build
     ├── src/
-    │   ├── book/        ← modelo editorial + renderer + templates
-    │   ├── data/        ← emptyBook (genérico), canonicalBook (KALLISTIS preset)
-    │   ├── editor/      ← canvas, toolbar, painéis, store
-    │   ├── lib/         ← persistence, preflight, assets
-    │   └── routes/      ← /, /print, /login
-    ├── scripts/         ← export-pdf, materialize-manuscript, …
-    ├── projects/        ← snapshots serializáveis (.json) — KALLISTIS, velarim, etc.
-    ├── public/          ← manifesto editorial, favicon, assets locais
-    ├── tests/e2e/       ← specs Playwright
+    │   ├── book/       # modelo editorial, renderer, templates e estilos
+    │   ├── editor/     # canvas, toolbar, painéis e estado
+    │   ├── lib/        # persistência, preflight e assets
+    │   └── routes/     # editor e /print
+    ├── scripts/        # importação, materialização e PDF
+    ├── projects/       # projetos serializáveis
+    ├── fixtures/
+    ├── docs/
     └── package.json
 ```
 
----
+## O que este repositório é
 
-## Smoke real — gates que passaram
+Este é o **repositório canônico do Book Composer**.
 
-Cada um desses débitos foi provado por smoke real em Chromium
-(headless ou headed), com bytes físicos no filesystem:
+Ele contém o engine, o editor, scripts de produção, fixtures, documentação e projetos usados para validar o fluxo editorial real.
 
-1. **Engine genérico** (`53d5feb`) — LIVRO TESTE A4 criado, editado,
-   salvo, PDF A4 real sem passar width/height ao page.pdf().
-2. **Work File real** (`b56dc4a` P1, `6310292`) — arquivo físico escrito
-   via Salvar como, segunda escrita atualizou MESMO arquivo via
-   handle vinculado em IndexedDB, reabertura via
-   `loadBoundBookFromWorkFile` preservou o estado, overwrite guard
-   intacto.
-3. **`/print` autocontido** (`b56dc4a` P2-A) — injeta `@page { size: <w> <h> }`
-   derivado dos tokens; PDF sai no formato exato do projeto
-   (210×297mm para A4, 140×210mm para KALLISTIS) sem o consumidor
-   precisar conhecer dimensões.
-4. **AssetBrowser sem duplicate keys** (`b56dc4a` P2-B) — deduplicação
-   do manifesto em render (177 entradas / 166 ids únicos → 0 warnings).
+O princípio de desenvolvimento é o mesmo adotado nos demais projetos da Nomos Ludens:
 
----
+> **Reality over simulated success.**
+
+Build verde ajuda. Teste automatizado ajuda. Mas funcionamento real do editor, persistência, geometria de impressão e PDF continuam sendo a evidência final do produto.
 
 ## Licença
 
-A definir antes da publicação do clone público sanitizado. Nenhuma
-licença permissiva é concedida por este README.
+Este repositório **não declara atualmente uma licença de software**.
+
+A visibilidade pública do código não constitui, por si só, autorização para copiar, redistribuir ou relicenciar o conteúdo.
+
+---
+
+<div align="center">
+
+### Nomos Ludens
+
+**Technology for human agency.**  
+**Empower, not replace.**
+
+[Nomos Ludens](https://github.com/NomosLudens) · [Kuan](https://github.com/NomosLudens/kuan) · [OmniTreco](https://github.com/NomosLudens/omnitreco-repicable)
+
+</div>
